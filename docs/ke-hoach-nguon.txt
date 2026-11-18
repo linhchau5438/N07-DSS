@@ -1,0 +1,1538 @@
+KẾ HOẠCH PHÂN TÍCH VÀ TRIỂN KHAI CHI TIẾT
+N07 – HỆ THỐNG HỖ TRỢ RA QUYẾT ĐỊNH NHẬP HÀNGDỰA TRÊN PHÂN TÍCH TỒN KHO
+Phạm vi: hệ thống nội bộ • Admin và Staff • Nhập – xuất – tồn khoMoving Average • Safety Stock • Reorder Point (ROP) • Machine Learning dự báo nhu cầu
+Đồ án nhóm IS402 – Hệ thống thông tin hỗ trợ ra quyết định (DSS)
+Lĩnh vực: Kho hàng • Hạn nộp: 28/11/2026
+
+1. TỔNG QUAN ĐỀ TÀI
+Đề tài N07 xây dựng một hệ thống web nội bộ hỗ trợ cửa hàng hoặc đơn vị kinh doanh theo dõi hàng hóa và đưa ra quyết định nhập hàng dựa trên dữ liệu tồn kho. Hệ thống không chỉ ghi nhận các nghiệp vụ nhập kho, xuất kho và số lượng tồn hiện tại, mà còn phân tích tốc độ tiêu thụ, ước lượng nhu cầu trong thời gian tới, tính điểm đặt hàng lại (ROP) và đề xuất số lượng cần nhập.
+Trọng tâm của đề tài là hỗ trợ ra quyết định (Decision Support System – DSS). Vì vậy, hệ thống phải cung cấp được căn cứ cho đề xuất: tồn kho hiện tại là bao nhiêu, nhu cầu tiêu thụ dự kiến là bao nhiêu, thời gian giao hàng mất bao lâu, tồn kho an toàn được thiết lập thế nào, vì sao sản phẩm bị cảnh báo và hệ thống tính số lượng nhập đề xuất ra sao.
+Phiên bản triển khai nên giữ phạm vi vừa đủ để hoàn thành và kiểm thử được. Hệ thống có hai vai trò nội bộ là Admin và Staff. Không cần phát triển thành hệ thống thương mại điện tử, không cần role khách hàng và không cần mở rộng sang kế toán, thanh toán hay quản lý nhiều chi nhánh.
+1.1. Vấn đề thực tế cần giải quyết
+Trong hoạt động kho, quyết định nhập hàng thường gặp hai tình huống đối lập. Nếu nhập quá ít hoặc nhập quá muộn, cửa hàng có thể hết hàng trước khi lô hàng mới được giao, dẫn đến mất doanh thu hoặc gián đoạn hoạt động. Nếu nhập quá nhiều, vốn bị giữ trong hàng tồn, chi phí lưu kho tăng và một số sản phẩm có thể chậm luân chuyển hoặc lỗi thời.
+Nếu chỉ nhìn số lượng tồn hiện tại, người quản lý chưa thể biết chính xác khi nào nên nhập. Một sản phẩm còn 50 đơn vị có thể là đủ nếu chỉ bán 2 đơn vị/ngày, nhưng có thể sắp hết nếu bán 30 đơn vị/ngày và nhà cung cấp cần nhiều ngày để giao hàng. Vì vậy, quyết định cần kết hợp tồn kho với nhu cầu tiêu thụ, thời gian giao hàng và lượng dự phòng.
+1.2. Mục tiêu tổng quát
+Xây dựng hệ thống nội bộ quản lý nhập – xuất – tồn kho và hỗ trợ Admin/Staff nhận diện sản phẩm cần xem xét nhập hàng. Hệ thống sử dụng Moving Average làm phương pháp tính nhu cầu cơ sở, kết hợp Safety Stock và Lead Time để tính ROP. Có thể tích hợp mô hình Machine Learning để dự báo nhu cầu và so sánh hiệu quả với Moving Average.
+1.3. Mục tiêu cụ thể
+Quản lý danh mục sản phẩm và các thông số phục vụ phân tích tồn kho.
+Ghi nhận phiếu nhập, phiếu xuất và lịch sử biến động số lượng.
+Tính toán và hiển thị số lượng tồn kho nhất quán với các giao dịch đã ghi nhận.
+Tính Moving Average từ dữ liệu tiêu thụ theo khoảng thời gian được cấu hình.
+Cho phép cấu hình hoặc xác định tồn kho an toàn và thời gian giao hàng dự kiến.
+Tính ROP, xác định sản phẩm chạm/vượt ngưỡng cảnh báo và tạo đề xuất nhập hàng.
+Nếu đủ dữ liệu, huấn luyện và đánh giá mô hình Machine Learning dự báo nhu cầu.
+Cung cấp căn cứ giải thích cho đề xuất để người dùng có thể kiểm tra trước khi quyết định.
+Lưu lịch sử duyệt, điều chỉnh hoặc từ chối đề xuất nhằm hỗ trợ kiểm tra sau này.
+1.4. Lĩnh vực được chọn và đối chiếu với yêu cầu đồ án nhóm IS402
+Đề tài thuộc lĩnh vực Kho hàng, một trong các lĩnh vực được gợi ý trong yêu cầu Đồ án nhóm IS402 – DSS (Hệ thống thông tin hỗ trợ ra quyết định). Bảng dưới đây đối chiếu từng yêu cầu của đồ án với nội dung và vị trí tương ứng trong tài liệu này. Nhóm dùng bảng để kiểm tra không bỏ sót hạng mục nào trước khi nộp.
+Yêu cầu của đồ án
+Nội dung thực hiện trong đề tài
+Vị trí trong tài liệu
+Sản phẩm
+1) Mô tả các chức năng quản lý của hệ thống (Use Case tổng quát)
+Sơ đồ Use Case tổng quát cho hai actor Admin và Staff, 16 Use Case (UC01 – UC16) và đặc tả các Use Case quan trọng
+Mục 4.1, 9.5, 9.6
+Hình 1
+2) Nêu các chức năng cần hỗ trợ ra quyết định và quy trình hỗ trợ / ra quyết định tương ứng
+Bảng 7 Use Case hỗ trợ ra quyết định UC09 – UC15 (MA, ML, IP/ROP, lượng nhập Q, tồn dư, duyệt đề xuất, OLAP) và quy trình 8 bước từ dữ liệu đến quyết định
+Mục 4.2, 4.3, 5.5, 7.3
+Bảng Use Case DSS
+3) Thiết kế / vẽ các Flowchart (lưu đồ chứng từ, lưu đồ chương trình)
+3 lưu đồ chứng từ (nhập kho, xuất kho, đề xuất nhập hàng) theo bộ ký hiệu chuẩn và 1 lưu đồ chương trình tính ROP – Q
+Mục 9.1 – 9.4, 9.7
+Hình 3 – 6, Hình 7
+4) Thiết kế và cài đặt cơ sở dữ liệu trên máy tính (+ nhập dữ liệu)
+Từ điển dữ liệu, script tạo bảng, dữ liệu mẫu/mô phỏng nhiều ngày phục vụ MA và ROP
+Mục 6.1 – 6.4
+Script SQL, dữ liệu mẫu
+5) Thiết kế (vẽ trên giấy) các báo cáo cần có để hỗ trợ ra quyết định
+5 mẫu báo cáo BC01 – BC05 với bố cục, cột dữ liệu, bộ lọc và nguồn SQL
+Mục 8.9
+Bản vẽ mẫu báo cáo
+6) Dùng câu lệnh SQL để xử lý dữ liệu, xuất thông tin hỗ trợ ra quyết định và quản lý; tạo GUI
+View/truy vấn SQL cho MA, ROP, lượng nhập, báo cáo; bảng ánh xạ màn hình – SQL
+Mục 6.6, 8.1 – 8.8, 8.10
+Phần mềm (GUI + CSDL)
+Khuyến khích: AI
+Dự báo nhu cầu bằng Machine Learning, so sánh với Moving Average bằng MAE/RMSE
+Mục 5, 12.4
+Script/notebook, bảng kết quả
+Khuyến khích: OLAP
+Mô hình sao; các thao tác roll-up, drill-down, slice, dice, pivot bằng SQL
+Mục 6.5
+Truy vấn OLAP
+Nộp kết quả
+Báo cáo (Bộ hồ sơ Phân tích và Thiết kế HTTT) + Files (Documents + Software) + báo cáo kết quả trên lớp. Hạn nộp 28/11/2026
+Mục 11, 13
+Hồ sơ, phần mềm, slide
+
+2. PHẠM VI VÀ NHỮNG GÌ KHÔNG LÀM
+2.1. Phạm vi bắt buộc
+Phiên bản đầu tập trung vào một kho hoặc một cửa hàng, một bộ dữ liệu sản phẩm và hai vai trò Admin/Staff. Các nghiệp vụ cốt lõi gồm quản lý sản phẩm, nhập kho, xuất kho, theo dõi tồn, phân tích nhu cầu, tính ROP, cảnh báo và đề xuất nhập hàng. Dashboard và báo cáo được xây dựng để trình bày kết quả.
+2.2. Phạm vi AI
+AI nên được triển khai theo hướng có thể đo lường. Moving Average được dùng làm mô hình cơ sở. Mô hình Machine Learning như Linear Regression hoặc Random Forest Regressor được huấn luyện từ dữ liệu tiêu thụ lịch sử. Sau đó, hai phương pháp được đánh giá trên cùng một giai đoạn kiểm thử bằng MAE và RMSE. Không được mặc định rằng mô hình ML luôn tốt hơn; nếu dữ liệu ít hoặc mô hình cho sai số cao hơn, hệ thống cần tiếp tục dùng MA hoặc hiển thị rõ giới hạn.
+2.3. Những phần không bắt buộc
+Không xây dựng role khách hàng hoặc giao diện mua hàng công khai.
+Không tự động gửi đơn mua đến nhà cung cấp trong phiên bản đầu.
+Không cần chatbot AI nếu phần dự báo và ROP chưa hoàn thiện.
+Không cần Deep Learning/LSTM nếu nhóm chưa có dữ liệu đủ dài và kinh nghiệm triển khai.
+Không cần tối ưu nhiều kho, tuyến vận chuyển, kế toán hoặc thanh toán.
+Không nên gọi mọi quy tắc cảnh báo là AI. Cảnh báo theo ROP là logic nghiệp vụ; phần Machine Learning nằm ở mô hình dự báo được huấn luyện và đánh giá.
+2.4. Phạm vi OLAP và mức ưu tiên theo yêu cầu đồ án
+Đồ án nhóm IS402 khuyến khích bổ sung AI và OLAP (Online Analytical Processing). Với đề tài này, OLAP được hiểu ở mức vừa đủ: tổ chức dữ liệu nhập – xuất – tiêu thụ theo mô hình đa chiều (thời gian, sản phẩm/danh mục, loại giao dịch) và thực hiện các thao tác roll-up, drill-down, slice, dice, pivot bằng câu lệnh SQL (mục 6.5). Không bắt buộc triển khai máy chủ OLAP hoặc công cụ BI riêng.
+Mức ưu tiên: (1) sáu yêu cầu bắt buộc của đồ án, gồm Use Case tổng quát, chức năng và quy trình hỗ trợ ra quyết định, lưu đồ, cơ sở dữ liệu, mẫu báo cáo, SQL và GUI; (2) phần khuyến khích gồm AI dự báo và OLAP. Phần khuyến khích chỉ nên làm sau khi phần bắt buộc chạy đúng.
+3. ĐỐI TƯỢNG SỬ DỤNG VÀ PHÂN QUYỀN
+3.1. Admin
+Admin là người quản trị và chịu trách nhiệm kiểm soát hoạt động của hệ thống. Admin có thể tạo, sửa hoặc khóa tài khoản; quản lý danh mục sản phẩm; cấu hình tồn kho an toàn, thời gian giao hàng và các tham số phân tích; xem toàn bộ giao dịch; theo dõi dự báo; xem danh sách đề xuất nhập hàng; duyệt, điều chỉnh hoặc từ chối đề xuất; và xem báo cáo tổng hợp.
+Khi Admin điều chỉnh số lượng đề xuất, hệ thống cần lưu số lượng ban đầu, số lượng sau điều chỉnh, người thực hiện, thời điểm và lý do. Việc lưu dấu vết giúp giải thích vì sao quyết định thực tế khác với đề xuất của mô hình.
+3.2. Staff
+Staff là người thực hiện nghiệp vụ kho hằng ngày. Staff có thể tra cứu sản phẩm, lập phiếu nhập và xuất theo quy trình được cấp quyền, xem số lượng tồn, lịch sử giao dịch, cảnh báo dưới ROP và kết quả phân tích. Để tránh thay đổi các thông số ảnh hưởng đến mô hình, Staff không nên tự sửa Safety Stock, Lead Time, công thức ROP hoặc quyền người dùng.
+Tùy yêu cầu giảng viên, Staff có thể chỉ xem đề xuất hoặc được tạo yêu cầu nhập hàng để Admin phê duyệt. Trong phương án an toàn và rõ trách nhiệm, Staff không tự động duyệt hoặc phát hành đơn mua hàng.
+3.3. Quy tắc phân quyền cần kiểm thử
+Người chưa đăng nhập không được truy cập trang nghiệp vụ.
+Staff không thể gọi trực tiếp API quản trị tài khoản hoặc thay đổi role bằng cách nhập URL.
+Backend phải kiểm tra quyền; chỉ ẩn nút trên giao diện là chưa đủ.
+Các thao tác thay đổi dữ liệu cần lưu người thực hiện và thời gian.
+Không lưu mật khẩu dạng văn bản thuần; sử dụng cơ chế băm mật khẩu phù hợp của framework.
+4. YÊU CẦU CHỨC NĂNG CHI TIẾT
+4.1. Sơ đồ Use Case tổng quát và danh mục Use Case
+Các chức năng quản lý của hệ thống được mô tả bằng Use Case trong toàn bộ tài liệu: mỗi chức năng có một mã UC01 – UC16, và các mục yêu cầu chức năng (mục 4), màn hình (mục 8), lưu đồ (mục 9) đều ghi mã Use Case tương ứng. Các Use Case tô màu cam (UC09 – UC15) là các Use Case hỗ trợ ra quyết định, được đặc tả ở mục 4.2.
+
+Hình 1. Sơ đồ Use Case tổng quát của hệ thống
+Danh mục Use Case, actor thực hiện và mục mô tả chi tiết:
+Mã
+Use Case
+Actor
+Nhóm
+Mục mô tả
+UC01
+Đăng nhập
+Admin, Staff
+Quản trị
+4.4, 8.1
+UC02
+Xem dashboard
+Admin, Staff
+Báo cáo
+4.15, 8.2
+UC03
+Xem sản phẩm
+Admin, Staff
+Danh mục
+4.5, 8.3
+UC04
+Quản lý sản phẩm và thông số (Safety Stock, Lead Time, MA, T)
+Admin
+Danh mục
+4.5, 4.10, 4.11, 8.3
+UC05
+Quản lý tài khoản
+Admin
+Quản trị
+4.4
+UC06
+Nhập kho
+Staff
+Kho
+4.6, 8.4, 9.2
+UC07
+Xuất kho
+Staff
+Kho
+4.7, 8.4, 9.3
+UC08
+Xem tồn kho, lịch sử giao dịch
+Admin, Staff
+Kho
+4.8, 8.5
+UC09
+Phân tích nhu cầu (Moving Average)
+Admin, Staff
+Hỗ trợ ra quyết định
+4.9, 8.6
+UC10
+Dự báo nhu cầu bằng ML (chạy, đánh giá mô hình)
+Admin
+Hỗ trợ ra quyết định
+5, 8.6
+UC11
+Xem ROP và cảnh báo
+Admin, Staff
+Hỗ trợ ra quyết định
+4.12, 4.14, 8.5
+UC12
+Xem đề xuất nhập hàng (lượng Q)
+Admin, Staff
+Hỗ trợ ra quyết định
+4.13, 4.14, 8.7
+UC13
+Phát hiện tồn dư, chậm luân chuyển
+Admin
+Hỗ trợ ra quyết định
+4.15, 8.8
+UC14
+Duyệt / điều chỉnh / từ chối đề xuất
+Admin
+Hỗ trợ ra quyết định
+4.14, 8.7
+UC15
+Phân tích đa chiều OLAP (khuyến khích)
+Admin, Staff
+Hỗ trợ ra quyết định
+6.5, 8.8
+UC16
+Xem báo cáo
+Admin, Staff
+Báo cáo
+4.15, 8.8, 8.9
+
+4.2. Các chức năng cần hỗ trợ ra quyết định
+Hệ thống không chỉ lưu dữ liệu mà phải trả lời được các câu hỏi quản lý khi quyết định nhập hàng. Bảng dưới đây liệt kê các Use Case hỗ trợ ra quyết định (UC09 – UC15), dữ liệu đầu vào, phương pháp và kết quả đưa cho người ra quyết định.
+Use Case hỗ trợ
+Câu hỏi quản lý
+Dữ liệu đầu vào
+Phương pháp / công thức
+Kết quả hỗ trợ quyết định
+UC09. Phân tích nhu cầu tiêu thụ (Moving Average)
+Mỗi ngày sản phẩm này tiêu thụ trung bình bao nhiêu?
+daily_demand, cửa sổ MA (n ngày)
+d = tổng tiêu thụ n ngày gần nhất / n
+Nhu cầu/ngày, khoảng ngày dùng, mức tin cậy
+UC10. Dự báo nhu cầu bằng ML (khuyến khích)
+Nhu cầu sắp tới có khác mức trung bình lịch sử không?
+Chuỗi tiêu thụ theo ngày, lag, thứ trong tuần
+Linear Regression hoặc Random Forest; so với MA bằng MAE, RMSE
+Nhu cầu/ngày dự báo kèm sai số kiểm thử
+UC11. Tính IP, ROP và cảnh báo
+Khi nào cần xem xét nhập hàng?
+Tồn thực tế, hàng đang về, lượng cam kết, d, L, SS
+IP = tồn + đang về − cam kết; ROP = d × L + SS; so sánh IP với ROP
+Trạng thái: Bình thường / Cần xem xét / Thiếu dữ liệu / Chưa cấu hình
+UC12. Tính lượng nhập đề xuất
+Nên nhập bao nhiêu?
+d, L, T, SS, IP, quy cách đóng gói, giá nhập
+Q = max(0, d × (L + T) + SS − IP), làm tròn lên theo quy cách
+Số lượng đề xuất và chi phí ước tính
+UC13. Phát hiện tồn dư, chậm luân chuyển
+Sản phẩm nào tồn nhiều nhưng bán chậm?
+Tồn thực tế, d, giá nhập
+Số ngày tồn = tồn / d; so với ngưỡng (ví dụ 60 ngày)
+Danh sách sản phẩm và giá trị vốn bị giữ
+UC14. Xem xét và ra quyết định
+Chấp nhận, điều chỉnh hay từ chối đề xuất?
+Đề xuất và căn cứ tính toán
+Admin duyệt / điều chỉnh (kèm lý do) / từ chối
+Quyết định cuối cùng và dấu vết kiểm tra
+UC15. Phân tích đa chiều OLAP (khuyến khích)
+Xu hướng nhập, xuất, tiêu thụ theo thời gian, danh mục, loại giao dịch?
+Bảng sự kiện nhập/xuất và các chiều
+Roll-up, drill-down, slice, dice, pivot bằng SQL
+Báo cáo đa chiều hỗ trợ lập kế hoạch
+
+4.3. Quy trình hỗ trợ và ra quyết định
+Quy trình dưới đây gắn các Use Case ở mục 4.2 thành một vòng lặp từ dữ liệu giao dịch đến quyết định nhập hàng. Các bước 1 – 5 do hệ thống thực hiện (hỗ trợ), bước 6 do người có thẩm quyền thực hiện (ra quyết định).
+Thu thập dữ liệu: Staff lập phiếu nhập/xuất; các phiếu xuất mục đích tiêu thụ được cộng vào nhu cầu theo ngày (daily_demand).
+Phân tích nhu cầu: hệ thống tính nhu cầu/ngày d bằng Moving Average, hoặc bằng mô hình ML nếu mô hình đã được đánh giá tốt hơn MA.
+Đánh giá tình trạng tồn: tính IP và ROP, phân loại Bình thường / Cần xem xét / Thiếu dữ liệu / Chưa cấu hình.
+Lập phương án: với sản phẩm có IP ≤ ROP, tính lượng nhập đề xuất Q và chi phí ước tính.
+Trình bày căn cứ: hiển thị cảnh báo kèm đầu vào (tồn, d, L, SS, T, IP, ROP) và công thức đã dùng để người dùng kiểm tra.
+Ra quyết định: Admin duyệt, điều chỉnh số lượng (nhập lý do khi lệch đáng kể) hoặc từ chối đề xuất.
+Thực thi: tạo yêu cầu đặt hàng cho các đề xuất đã duyệt. Phiên bản đầu không tự động gửi đơn đến nhà cung cấp.
+Ghi nhận và phản hồi: lưu lịch sử quyết định; khi hàng về, Staff lập phiếu nhập và vòng lặp bắt đầu lại; Admin xem lại Safety Stock, Lead Time nếu đề xuất thường lệch với thực tế.
+4.4. Đăng nhập và quản lý tài khoản (UC01, UC05)
+Người dùng đăng nhập bằng thông tin tài khoản đã được cấp. Hệ thống kiểm tra tài khoản có tồn tại, đang hoạt động và mật khẩu có hợp lệ hay không. Khi thành công, hệ thống tạo phiên hoặc token xác thực theo công nghệ được chọn và điều hướng đến dashboard tương ứng với role. Khi đăng xuất, thông tin xác thực ở phía ứng dụng phải được xử lý theo cách an toàn.
+Admin có thể tạo tài khoản Staff, cập nhật thông tin cơ bản, đổi trạng thái hoạt động và đặt lại thông tin đăng nhập theo quy trình. Không nên cho phép người dùng tự nâng quyền từ Staff lên Admin.
+4.5. Quản lý sản phẩm (UC03, UC04)
+Mỗi sản phẩm cần có mã định danh duy nhất, mã SKU nếu sử dụng, tên, danh mục, đơn vị tính, giá nhập tham khảo và trạng thái hoạt động. Mã sản phẩm không được trùng. Hệ thống cần kiểm tra các trường bắt buộc, số liệu giá không âm và không cho xóa cứng sản phẩm đã có giao dịch kho. Với sản phẩm đã phát sinh giao dịch, nên chuyển sang trạng thái ngừng kinh doanh để giữ lịch sử.
+Thông số phân tích có thể được gắn với từng sản phẩm, gồm Safety Stock, Lead Time, số ngày Moving Average và số ngày dự trữ mục tiêu. Nếu một sản phẩm chưa có đủ thông số, hệ thống cần hiển thị trạng thái chưa cấu hình thay vì tự đưa ra một kết quả có vẻ chính xác.
+4.6. Nhập kho (UC06)
+Khi nhập kho, Staff chọn sản phẩm, nhập số lượng, ngày nhập và thông tin tham chiếu như số hóa đơn hoặc số chứng từ nếu có. Hệ thống kiểm tra sản phẩm còn hoạt động, số lượng lớn hơn 0 và dữ liệu hợp lệ. Khi phiếu được xác nhận, tồn kho tăng theo số lượng nhập và giao dịch được lưu vào lịch sử.
+Việc ghi phiếu và cập nhật số dư phải được thực hiện nhất quán. Nếu lưu giao dịch thành công nhưng cập nhật tồn thất bại, hệ thống không được để dữ liệu ở trạng thái nửa chừng. Nên sử dụng transaction của cơ sở dữ liệu để đảm bảo tính toàn vẹn. Nếu cần hủy phiếu đã xác nhận, nên tạo giao dịch đảo hoặc quy trình điều chỉnh có ghi nhận lý do, không âm thầm xóa lịch sử.
+4.7. Xuất kho (UC07)
+Khi xuất kho, Staff chọn sản phẩm, số lượng và mục đích xuất. Hệ thống phải xác định rõ loại xuất, chẳng hạn xuất bán/tiêu thụ, hàng hỏng, điều chuyển hoặc điều chỉnh. Phân loại này rất quan trọng vì chỉ dữ liệu phản ánh nhu cầu tiêu thụ mới nên được dùng trực tiếp để dự báo bán hàng.
+Trước khi xác nhận phiếu, hệ thống kiểm tra số lượng có hợp lệ và tồn khả dụng có đủ hay không. Với phiên bản đầu, nên chặn xuất vượt tồn để không tạo số dư âm. Khi phiếu hợp lệ, số lượng tồn giảm và lịch sử giao dịch ghi lại người thao tác, thời gian, số lượng và mục đích.
+4.8. Theo dõi tồn kho (UC08)
+Màn hình tồn kho cần hiển thị ít nhất mã/tên sản phẩm, tồn thực tế, hàng đang về nếu hệ thống theo dõi đơn đặt hàng, lượng đã cam kết xuất nếu có, vị thế tồn kho, Safety Stock, ROP và trạng thái cảnh báo. Người dùng có thể tìm kiếm theo mã/tên, lọc theo danh mục hoặc trạng thái tồn kho.
+Cần phân biệt tồn thực tế và Inventory Position. Tồn thực tế là số lượng đang có trong kho. Inventory Position (IP) là đại lượng dùng để ra quyết định đặt hàng, thường được tính bằng tồn hiện có cộng lượng đã đặt đang về trừ lượng đã cam kết xuất. Nếu phiên bản đầu chưa quản lý đơn đặt hàng hoặc lượng cam kết, có thể dùng tồn thực tế làm đại diện nhưng phải ghi rõ giả định trong báo cáo.
+4.9. Phân tích Moving Average (UC09)
+Moving Average tính mức tiêu thụ trung bình từ một cửa sổ thời gian gần nhất. Ví dụ MA 7 ngày là tổng lượng tiêu thụ của 7 ngày gần nhất chia cho 7. Hệ thống nên tính theo từng sản phẩm, không gộp số lượng của các sản phẩm khác nhau. Các ngày không phát sinh tiêu thụ cần được xử lý nhất quán; nếu dữ liệu theo ngày, ngày không bán thường được ghi nhận là 0 khi cửa hàng vẫn hoạt động và dữ liệu đầy đủ.
+Kết quả cần hiển thị khoảng ngày được sử dụng, tổng tiêu thụ, số ngày tính toán và giá trị trung bình/ngày. Nếu thiếu dữ liệu hoặc sản phẩm mới chưa có lịch sử, giao diện cần cảnh báo rằng kết quả có độ tin cậy hạn chế. Có thể cho Admin cấu hình cửa sổ 7 ngày trong bản đầu và mở rộng sang 14 hoặc 30 ngày sau khi đã kiểm thử.
+4.10. Tồn kho an toàn (Safety Stock) (UC04)
+Safety Stock là lượng hàng dự phòng để giảm nguy cơ hết hàng khi nhu cầu hoặc thời gian giao hàng biến động. Đối với phiên bản đầu, cách triển khai dễ kiểm soát nhất là cho Admin cấu hình Safety Stock theo từng sản phẩm dựa trên chính sách cửa hàng. Hệ thống phải kiểm tra giá trị không âm và hiển thị rõ ngày cập nhật.
+Nếu muốn phát triển sâu hơn, nhóm có thể nghiên cứu cách tính Safety Stock từ độ lệch chuẩn nhu cầu và mức dịch vụ mong muốn. Tuy nhiên, cách tính nâng cao cần giả định dữ liệu và công thức phù hợp; không nên tự thêm công thức mà không giải thích được trong báo cáo. Đối với đồ án giới hạn thời gian, cấu hình thủ công là lựa chọn khả thi.
+4.11. Thời gian giao hàng (Lead Time) (UC04)
+Lead Time là số ngày từ khi đặt hàng đến khi hàng sẵn sàng được nhận vào kho. Có thể cấu hình theo sản phẩm hoặc nhà cung cấp; nếu hệ thống không quản lý nhà cung cấp, lưu Lead Time trực tiếp theo sản phẩm là đủ cho phiên bản đầu. Giá trị phải lớn hơn hoặc bằng 0 và đơn vị tính cần thống nhất là ngày.
+Nếu có dữ liệu đơn hàng lịch sử, Lead Time thực tế có thể được tính từ ngày đặt đến ngày nhận. Nếu chưa có, Admin nhập giá trị ước tính. Báo cáo cần nêu rõ Lead Time là dữ liệu thực tế hay tham số giả định.
+4.12. Tính ROP (UC11)
+Điểm đặt hàng lại (Reorder Point – ROP) xác định mức vị thế tồn kho tại đó cần xem xét đặt hàng. Công thức cơ bản là ROP = d × L + SS, trong đó d là nhu cầu trung bình mỗi ngày, L là Lead Time tính bằng ngày và SS là Safety Stock.
+Ví dụ: nhu cầu trung bình d = 13 đơn vị/ngày, Lead Time L = 4 ngày và Safety Stock SS = 20 đơn vị. Khi đó ROP = 13 × 4 + 20 = 72 đơn vị. Nếu IP nhỏ hơn hoặc bằng 72, hệ thống tạo cảnh báo xem xét đặt hàng. Ví dụ chỉ minh họa; số liệu thực tế phải lấy từ dữ liệu và thông số sản phẩm.
+Nếu dùng dự báo ML thay cho MA, cần xác định rõ đại lượng đầu vào là nhu cầu dự báo bình quân/ngày trong thời gian phù hợp. Không nên lấy dự báo tổng của cả tuần rồi nhân tiếp với Lead Time theo ngày vì sẽ sai đơn vị. Công thức và đơn vị đo phải được kiểm tra trong các test case.
+4.13. Tính số lượng nhập đề xuất (UC12)
+ROP cho biết khi nào cần xem xét đặt hàng, nhưng không tự xác định số lượng cần nhập. Để tính lượng đề xuất, hệ thống cần thêm một chính sách tồn kho mục tiêu. Một cách đơn giản là cấu hình số ngày dự trữ mục tiêu T sau khi hàng về, rồi tính Q = max(0, d × (L + T) + SS − IP). Trong đó Q là số lượng đề xuất, d là nhu cầu/ngày, L là Lead Time, T là số ngày dự trữ mục tiêu, SS là Safety Stock và IP là vị thế tồn kho.
+Ví dụ: d = 13, L = 4, T = 7, SS = 20 và IP = 70. Khi đó Q = max(0, 13 × (4 + 7) + 20 − 70) = 93 đơn vị. Hệ thống có thể làm tròn theo quy cách đóng gói nếu có thông tin quy cách. Ví dụ này minh họa công thức; nhóm cần thống nhất công thức cuối cùng và kiểm tra bằng tình huống thực tế.
+Đề xuất nên hiển thị cả lượng đề xuất, ROP, IP, nhu cầu dự báo, Lead Time, Safety Stock và chi phí ước tính nếu có giá nhập. Admin có thể điều chỉnh lượng nhập, nhưng cần nhập lý do nếu thay đổi đáng kể so với đề xuất.
+4.14. Cảnh báo và danh sách đề xuất (UC11, UC12, UC14)
+Hệ thống nên phân loại trạng thái dễ hiểu: bình thường khi IP lớn hơn ROP; cần xem xét khi IP bằng hoặc thấp hơn ROP; thiếu dữ liệu khi không đủ lịch sử hoặc thiếu tham số; và dữ liệu bất thường khi số dư âm hoặc thông số không hợp lệ. Không nên chỉ dùng màu sắc để phân biệt trạng thái; cần có nhãn chữ để dễ đọc và hỗ trợ người dùng.
+Mỗi đề xuất cần lưu thời điểm tạo, phiên bản mô hình hoặc phương pháp được dùng, các giá trị đầu vào chính, lượng đề xuất và trạng thái xử lý. Trạng thái có thể gồm Chờ xem xét, Đã duyệt, Đã điều chỉnh, Từ chối và Đã tạo yêu cầu đặt hàng. Lịch sử này là căn cứ để giải thích và kiểm tra lại quyết định.
+4.15. Báo cáo (UC02, UC13, UC15, UC16)
+Báo cáo cơ bản gồm tổng quan tồn kho, nhập/xuất theo khoảng thời gian, danh sách sản phẩm dưới ROP, sản phẩm có tốc độ tiêu thụ cao, sản phẩm có tồn kho lớn nhưng tiêu thụ thấp và danh sách đề xuất nhập hàng. Nếu có giá nhập, hệ thống có thể ước tính giá trị hàng tồn và chi phí dự kiến của lượng nhập đề xuất.
+Các báo cáo cần cho phép lọc theo khoảng thời gian, sản phẩm hoặc danh mục. Số liệu báo cáo phải lấy từ cùng nguồn dữ liệu với màn hình nghiệp vụ, tránh tình trạng dashboard và chi tiết phiếu hiển thị số khác nhau.
+5. THIẾT KẾ VÀ TÍCH HỢP AI CHI TIẾT
+5.1. AI giải quyết phần nào?
+AI được sử dụng để dự báo nhu cầu tiêu thụ trong tương lai, thay vì chỉ dựa vào trung bình lịch sử. Kết quả dự báo có thể được đưa vào phép tính ROP và lượng nhập đề xuất. Các bước nhập/xuất, kiểm soát tồn và công thức cuối cùng vẫn do backend thực hiện. Điều này giúp kết quả có thể kiểm tra, giải thích và không phụ thuộc hoàn toàn vào câu trả lời sinh tự do của mô hình ngôn ngữ.
+5.2. Dữ liệu cần chuẩn bị
+Tối thiểu cần dữ liệu theo ngày và theo sản phẩm, gồm ngày, mã sản phẩm và số lượng tiêu thụ thực tế. Có thể bổ sung thứ trong tuần, lượng tiêu thụ của các ngày trước, giá bán hoặc sự kiện khuyến mãi nếu dữ liệu đáng tin cậy và phạm vi đồ án cho phép. Nếu chỉ có dữ liệu nhập/xuất kho, cần phân biệt xuất do bán/tiêu thụ với xuất hỏng, điều chuyển hoặc điều chỉnh.
+Nếu chưa có dữ liệu thật, nhóm có thể tạo dữ liệu giả lập để trình diễn nhưng phải ghi rõ là dữ liệu mô phỏng. Dữ liệu giả lập nên có nhiều sản phẩm và đủ dài để thể hiện các kiểu nhu cầu khác nhau, ví dụ nhu cầu ổn định, xu hướng tăng/giảm và biến động theo ngày trong tuần. Không được trình bày kết quả trên dữ liệu giả lập như bằng chứng hiệu quả thực tế.
+5.3. Mô hình đề xuất
+Bước đầu nên sử dụng Linear Regression hoặc Random Forest Regressor. Linear Regression dễ giải thích và là điểm khởi đầu phù hợp. Random Forest có thể học mối quan hệ phi tuyến nhưng cần kiểm thử để tránh mô hình phức tạp hơn mà kết quả không tốt hơn. Không cần bắt đầu bằng LSTM hoặc Deep Learning.
+Đặc trưng đầu vào có thể gồm lượng tiêu thụ ngày trước đó (lag 1, lag 7), trung bình trượt trong 7 ngày, thứ trong tuần và các biến lịch phù hợp. Nhãn cần dự báo là lượng tiêu thụ ở ngày kế tiếp hoặc tổng nhu cầu của khoảng thời gian đã xác định. Nhóm phải thống nhất rõ mô hình dự báo một ngày hay nhiều ngày để không sử dụng sai đơn vị khi tính ROP.
+5.4. Quy trình huấn luyện và đánh giá
+Làm sạch dữ liệu: kiểm tra ngày trùng, số lượng âm bất hợp lý, dữ liệu thiếu và mã sản phẩm không tồn tại.
+Tạo chuỗi dữ liệu theo ngày cho từng sản phẩm; xử lý ngày không bán theo quy tắc thống nhất.
+Tạo đặc trưng từ quá khứ; không sử dụng dữ liệu của tương lai để dự báo ngày trước đó.
+Chia dữ liệu theo thời gian: phần đầu để huấn luyện, phần sau để kiểm thử. Không chia ngẫu nhiên như dữ liệu độc lập thông thường.
+Tạo dự báo Moving Average và dự báo ML trên cùng giai đoạn kiểm thử.
+Tính MAE và RMSE. MAE là sai số tuyệt đối trung bình; RMSE phạt mạnh hơn các sai số lớn.
+So sánh kết quả và ghi rõ phương pháp nào được chọn. Nếu ML không tốt hơn MA, dùng MA làm phương án vận hành.
+Lưu tên/phiên bản mô hình, ngày huấn luyện và kết quả đánh giá để có thể tái lập.
+5.5. Đưa AI vào luồng DSS
+Khi người dùng mở trang phân tích hoặc khi có giao dịch làm thay đổi tồn kho, backend lấy dữ liệu tiêu thụ lịch sử, chạy phương pháp dự báo đã được chọn, xác định nhu cầu/ngày, lấy Lead Time và Safety Stock, tính ROP, tính IP và kiểm tra điều kiện cảnh báo. Nếu IP ≤ ROP, hệ thống tạo hoặc cập nhật đề xuất nhập hàng. Người dùng nhìn thấy cả kết quả và căn cứ, không chỉ một con số kết luận.
+5.6. AI giải thích đề xuất – tính năng mở rộng
+Nếu còn thời gian, có thể bổ sung phần giải thích bằng mẫu câu dựa trên số liệu thực tế, ví dụ: “Sản phẩm X cần xem xét nhập vì vị thế tồn kho hiện tại là 40, thấp hơn ROP là 65. Nhu cầu dự báo là 15 đơn vị/ngày và Lead Time là 3 ngày.” Cách này chưa cần dùng mô hình ngôn ngữ lớn nhưng vẫn tạo ra giải thích minh bạch.
+Nếu dùng LLM, chỉ gửi các giá trị đã tính và yêu cầu mô hình diễn giải. Không cho LLM tự sửa số liệu, tự chạy SQL không kiểm soát, tự thay đổi tồn kho hoặc tự phê duyệt đơn hàng. Quyền truy cập dữ liệu phải được kiểm tra ở backend.
+5.7. Giới hạn AI cần nêu trong báo cáo
+Độ chính xác dự báo phụ thuộc vào chất lượng, độ dài và tính đại diện của dữ liệu. Sản phẩm mới, sản phẩm ít giao dịch, khuyến mãi đột biến hoặc thay đổi hành vi mua hàng có thể làm dự báo kém chính xác. Mô hình không thay thế hoàn toàn kinh nghiệm quản lý; kết quả chỉ là thông tin hỗ trợ quyết định. Người có thẩm quyền vẫn cần xem xét trước khi nhập hàng.
+6. THIẾT KẾ CƠ SỞ DỮ LIỆU
+Cơ sở dữ liệu phải lưu được người dùng, sản phẩm, giao dịch kho, thông số phân tích và lịch sử đề xuất. Bảng dưới đây là cấu trúc khởi đầu đề xuất, không phải lược đồ bắt buộc cuối cùng. Khi dựng ERD, nhóm cần xác định khóa chính, khóa ngoại, kiểu dữ liệu, ràng buộc NOT NULL/UNIQUE/CHECK và quy tắc xóa.
+
+Quy ước thiết kế: kiểu dữ liệu dưới đây tham khảo PostgreSQL; nếu dùng MySQL, điều chỉnh cú pháp tương ứng. PK là khóa chính, FK là khóa ngoại, UNIQUE là duy nhất, NOT NULL là bắt buộc. Các bảng đánh dấu “tùy chọn” chỉ triển khai khi nhóm có đủ thời gian và phạm vi.
+6.1. Từ điển dữ liệu chi tiết
+Bảng users – tài khoản hệ thống
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+user_id
+BIGINT
+PK, tự tăng
+Định danh tài khoản; dùng làm khóa tham chiếu người tạo giao dịch.
+full_name
+VARCHAR(120)
+NOT NULL
+Họ tên hiển thị của Admin/Staff.
+username
+VARCHAR(60)
+NOT NULL, UNIQUE
+Tên đăng nhập; không được trùng.
+email
+VARCHAR(150)
+UNIQUE, có thể NULL
+Email liên hệ hoặc khôi phục tài khoản nếu hệ thống dùng email.
+password_hash
+VARCHAR(255)
+NOT NULL
+Chuỗi mật khẩu đã băm; tuyệt đối không lưu mật khẩu thuần.
+role
+VARCHAR(20)
+NOT NULL, CHECK
+Chỉ nhận ADMIN hoặc STAFF.
+status
+VARCHAR(20)
+NOT NULL, mặc định ACTIVE
+ACTIVE/INACTIVE/LOCKED; tài khoản bị khóa không được đăng nhập.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm tạo tài khoản.
+updated_at
+TIMESTAMP
+NOT NULL
+Thời điểm cập nhật gần nhất.
+
+Bảng categories – danh mục sản phẩm
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+category_id
+BIGINT
+PK, tự tăng
+Định danh danh mục.
+category_name
+VARCHAR(100)
+NOT NULL, UNIQUE
+Tên danh mục; tránh tạo nhiều danh mục cùng tên.
+description
+TEXT
+NULL
+Mô tả danh mục.
+status
+VARCHAR(20)
+NOT NULL, mặc định ACTIVE
+Cho phép ngừng sử dụng danh mục mà vẫn giữ lịch sử.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm tạo.
+
+Bảng products – sản phẩm
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+product_id
+BIGINT
+PK, tự tăng
+Định danh sản phẩm.
+sku
+VARCHAR(50)
+NOT NULL, UNIQUE
+Mã SKU/mã nội bộ để tìm kiếm và nhận diện.
+product_name
+VARCHAR(180)
+NOT NULL
+Tên sản phẩm.
+category_id
+BIGINT
+FK → categories.category_id
+Danh mục của sản phẩm; có thể NULL nếu không phân loại.
+unit
+VARCHAR(30)
+NOT NULL
+Đơn vị tính, ví dụ cái, hộp, kg.
+purchase_price
+NUMERIC(14,2)
+NOT NULL, CHECK >= 0
+Giá nhập tham khảo để ước tính giá trị tồn/chi phí đề xuất; không nhất thiết là giá vốn kế toán.
+pack_size
+NUMERIC(12,3)
+NOT NULL, mặc định 1, CHECK > 0
+Quy cách đóng gói/lượng tối thiểu mỗi đơn vị đặt nếu áp dụng.
+status
+VARCHAR(20)
+NOT NULL, mặc định ACTIVE
+ACTIVE/INACTIVE; không xóa cứng sản phẩm đã có giao dịch.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm tạo.
+updated_at
+TIMESTAMP
+NOT NULL
+Thời điểm cập nhật.
+
+Bảng inventory_transactions – sổ giao dịch kho
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+transaction_id
+BIGINT
+PK, tự tăng
+Mã giao dịch kho.
+transaction_code
+VARCHAR(40)
+NOT NULL, UNIQUE
+Mã phiếu duy nhất để tra cứu.
+product_id
+BIGINT
+FK → products.product_id, NOT NULL
+Sản phẩm phát sinh biến động.
+transaction_type
+VARCHAR(20)
+NOT NULL, CHECK
+RECEIPT, ISSUE hoặc ADJUSTMENT; xác định chiều thay đổi tồn.
+issue_purpose
+VARCHAR(30)
+NULL
+Nếu là xuất: CONSUMPTION/SALE, DAMAGE, TRANSFER, OTHER; chỉ tiêu thụ phù hợp mới dùng cho dự báo.
+quantity
+NUMERIC(14,3)
+NOT NULL, CHECK > 0
+Số lượng dương; chiều tăng/giảm do transaction_type quyết định.
+unit_cost
+NUMERIC(14,2)
+NULL, CHECK >= 0
+Đơn giá tại thời điểm giao dịch nếu cần phân tích chi phí.
+transaction_at
+TIMESTAMP
+NOT NULL
+Thời điểm nghiệp vụ thực tế xảy ra; cần thống nhất múi giờ.
+reference_no
+VARCHAR(100)
+NULL
+Số hóa đơn/chứng từ/phiếu tham chiếu.
+created_by
+BIGINT
+FK → users.user_id, NOT NULL
+Người tạo giao dịch.
+status
+VARCHAR(20)
+NOT NULL, mặc định CONFIRMED
+DRAFT/CONFIRMED/CANCELLED; chỉ giao dịch hợp lệ mới tác động số dư.
+note
+TEXT
+NULL
+Ghi chú và lý do điều chỉnh/hủy.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm ghi vào hệ thống.
+
+Bảng stock_balances – số dư tồn hiện tại (khuyến nghị nếu cần truy vấn nhanh)
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+product_id
+BIGINT
+PK và FK → products.product_id
+Mỗi sản phẩm có một bản ghi số dư.
+on_hand_qty
+NUMERIC(14,3)
+NOT NULL, CHECK >= 0
+Tồn thực tế hiện có; phải đối soát được với tổng giao dịch đã xác nhận.
+updated_at
+TIMESTAMP
+NOT NULL
+Lần cập nhật số dư gần nhất.
+version
+INTEGER
+NOT NULL, mặc định 0
+Có thể dùng kiểm soát cập nhật đồng thời; không bắt buộc với ứng dụng rất nhỏ.
+
+Bảng inventory_settings – tham số phân tích theo sản phẩm
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+setting_id
+BIGINT
+PK, tự tăng
+Định danh bộ cấu hình.
+product_id
+BIGINT
+FK → products.product_id, NOT NULL, UNIQUE
+Một bộ cấu hình hiện hành cho mỗi sản phẩm trong phiên bản đơn giản.
+safety_stock
+NUMERIC(14,3)
+NOT NULL, CHECK >= 0
+Tồn kho an toàn; nhập thủ công bởi Admin ở phiên bản đầu.
+lead_time_days
+NUMERIC(8,2)
+NOT NULL, CHECK >= 0
+Thời gian giao hàng dự kiến, đơn vị ngày.
+ma_window_days
+INTEGER
+NOT NULL, CHECK > 0
+Cửa sổ Moving Average, ví dụ 7 ngày.
+target_cover_days
+NUMERIC(8,2)
+NOT NULL, CHECK >= 0
+Số ngày dự trữ mục tiêu dùng để tính lượng nhập đề xuất.
+service_level
+NUMERIC(5,4)
+NULL
+Mức dịch vụ mục tiêu nếu sau này tính Safety Stock thống kê; giá trị 0–1.
+updated_by
+BIGINT
+FK → users.user_id
+Admin cập nhật cấu hình.
+updated_at
+TIMESTAMP
+NOT NULL
+Thời điểm cập nhật cấu hình.
+
+Bảng daily_demand – nhu cầu tiêu thụ theo ngày (khuyến nghị cho dự báo)
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+demand_id
+BIGINT
+PK, tự tăng
+Định danh bản ghi nhu cầu.
+product_id
+BIGINT
+FK → products.product_id, NOT NULL
+Sản phẩm được thống kê.
+demand_date
+DATE
+NOT NULL
+Ngày thống kê theo múi giờ nghiệp vụ.
+consumed_qty
+NUMERIC(14,3)
+NOT NULL, CHECK >= 0
+Lượng tiêu thụ trong ngày; không lấy hàng hỏng/điều chuyển làm nhu cầu bán.
+data_source
+VARCHAR(20)
+NOT NULL
+TRANSACTION, CSV_IMPORT hoặc SIMULATED để truy vết nguồn dữ liệu.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm nhập/tổng hợp dữ liệu.
+Ràng buộc
+—
+UNIQUE(product_id, demand_date)
+Mỗi sản phẩm có tối đa một tổng nhu cầu/ngày; nếu nhập lại cần cập nhật thay vì nhân đôi.
+
+Bảng model_runs – lịch sử chạy/đánh giá mô hình AI
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+model_run_id
+BIGINT
+PK, tự tăng
+Định danh lần chạy mô hình.
+model_name
+VARCHAR(80)
+NOT NULL
+Ví dụ MovingAverage, LinearRegression, RandomForest.
+model_version
+VARCHAR(40)
+NULL
+Phiên bản mô hình hoặc mã phiên bản.
+run_type
+VARCHAR(20)
+NOT NULL
+TRAIN, EVALUATE hoặc PREDICT.
+training_start
+DATE
+NULL
+Ngày đầu của tập huấn luyện.
+training_end
+DATE
+NULL
+Ngày cuối của tập huấn luyện.
+test_start
+DATE
+NULL
+Ngày đầu tập kiểm thử theo thời gian.
+test_end
+DATE
+NULL
+Ngày cuối tập kiểm thử.
+mae
+NUMERIC(14,6)
+NULL, CHECK >= 0
+Sai số tuyệt đối trung bình trên tập đánh giá.
+rmse
+NUMERIC(14,6)
+NULL, CHECK >= 0
+Căn bậc hai sai số bình phương trung bình.
+status
+VARCHAR(20)
+NOT NULL
+SUCCESS/FAILED; ghi nhận trạng thái chạy.
+created_by
+BIGINT
+FK → users.user_id, NULL
+Người khởi chạy nếu có thao tác thủ công.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm chạy.
+
+Bảng demand_forecasts – kết quả dự báo nhu cầu
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+forecast_id
+BIGINT
+PK, tự tăng
+Định danh bản ghi dự báo.
+product_id
+BIGINT
+FK → products.product_id, NOT NULL
+Sản phẩm được dự báo.
+model_run_id
+BIGINT
+FK → model_runs.model_run_id, NOT NULL
+Mô hình/lần chạy tạo ra dự báo.
+forecast_date
+DATE
+NOT NULL
+Ngày tương lai mà lượng nhu cầu được dự báo.
+predicted_qty
+NUMERIC(14,3)
+NOT NULL, CHECK >= 0
+Lượng dự báo cho ngày đó.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm tạo dự báo.
+Ràng buộc
+—
+UNIQUE(product_id, model_run_id, forecast_date)
+Tránh lưu trùng dự báo cùng sản phẩm, cùng lần chạy và cùng ngày.
+
+Bảng purchase_orders – đơn/yêu cầu đặt hàng (tùy chọn nhưng hữu ích)
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+purchase_order_id
+BIGINT
+PK, tự tăng
+Định danh yêu cầu/đơn đặt hàng.
+order_code
+VARCHAR(40)
+NOT NULL, UNIQUE
+Mã đơn.
+status
+VARCHAR(25)
+NOT NULL
+DRAFT, PENDING_APPROVAL, APPROVED, ORDERED, PARTIALLY_RECEIVED, RECEIVED, REJECTED, CANCELLED.
+created_by
+BIGINT
+FK → users.user_id, NOT NULL
+Người lập yêu cầu.
+approved_by
+BIGINT
+FK → users.user_id, NULL
+Admin duyệt.
+created_at
+TIMESTAMP
+NOT NULL
+Ngày tạo yêu cầu.
+approved_at
+TIMESTAMP
+NULL
+Ngày duyệt.
+expected_date
+DATE
+NULL
+Ngày dự kiến hàng về.
+received_at
+TIMESTAMP
+NULL
+Thời điểm nhận đủ hàng.
+note
+TEXT
+NULL
+Ghi chú/lý do.
+
+Bảng purchase_order_items – dòng hàng trong đơn đặt
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+purchase_order_item_id
+BIGINT
+PK, tự tăng
+Định danh dòng hàng.
+purchase_order_id
+BIGINT
+FK → purchase_orders.purchase_order_id, NOT NULL
+Đơn đặt hàng cha.
+product_id
+BIGINT
+FK → products.product_id, NOT NULL
+Sản phẩm đặt mua.
+ordered_qty
+NUMERIC(14,3)
+NOT NULL, CHECK > 0
+Số lượng đặt.
+received_qty
+NUMERIC(14,3)
+NOT NULL, mặc định 0, CHECK >= 0
+Số lượng đã nhận; không vượt ordered_qty nếu không cho nhận vượt.
+unit_cost
+NUMERIC(14,2)
+NULL, CHECK >= 0
+Giá nhập dự kiến.
+Ràng buộc
+—
+UNIQUE(purchase_order_id, product_id) nếu mỗi sản phẩm chỉ có một dòng
+Nếu cho phép nhiều lô/giá khác nhau, bỏ ràng buộc này.
+
+Bảng inventory_recommendations – đợt đề xuất nhập hàng
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+recommendation_id
+BIGINT
+PK, tự tăng
+Định danh đợt chạy đề xuất.
+recommendation_code
+VARCHAR(40)
+NOT NULL, UNIQUE
+Mã đợt đề xuất.
+model_run_id
+BIGINT
+FK → model_runs.model_run_id, NULL
+Lần chạy mô hình dùng làm đầu vào; NULL nếu chỉ dùng MA/quy tắc.
+status
+VARCHAR(25)
+NOT NULL
+PENDING_REVIEW, APPROVED, ADJUSTED, REJECTED, ORDER_CREATED.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm tạo đề xuất.
+reviewed_by
+BIGINT
+FK → users.user_id, NULL
+Admin xem xét.
+reviewed_at
+TIMESTAMP
+NULL
+Thời điểm xem xét.
+review_note
+TEXT
+NULL
+Lý do duyệt, điều chỉnh hoặc từ chối.
+
+Bảng recommendation_details – chi tiết đề xuất theo sản phẩm
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+detail_id
+BIGINT
+PK, tự tăng
+Định danh dòng đề xuất.
+recommendation_id
+BIGINT
+FK → inventory_recommendations.recommendation_id, NOT NULL
+Đợt đề xuất cha.
+product_id
+BIGINT
+FK → products.product_id, NOT NULL
+Sản phẩm được đề xuất.
+on_hand_qty
+NUMERIC(14,3)
+NOT NULL
+Tồn thực tế tại thời điểm tính.
+on_order_qty
+NUMERIC(14,3)
+NOT NULL, mặc định 0
+Lượng đang đặt và chưa nhận.
+committed_qty
+NUMERIC(14,3)
+NOT NULL, mặc định 0
+Lượng đã cam kết xuất nếu hệ thống quản lý.
+inventory_position
+NUMERIC(14,3)
+NOT NULL
+IP = tồn hiện có + hàng đang về − lượng đã cam kết.
+demand_per_day
+NUMERIC(14,3)
+NOT NULL
+Nhu cầu/ngày dùng tính ROP.
+safety_stock
+NUMERIC(14,3)
+NOT NULL
+Safety Stock tại thời điểm tính.
+lead_time_days
+NUMERIC(8,2)
+NOT NULL
+Lead Time tại thời điểm tính.
+reorder_point
+NUMERIC(14,3)
+NOT NULL
+ROP = nhu cầu/ngày × Lead Time + Safety Stock.
+target_cover_days
+NUMERIC(8,2)
+NOT NULL
+Số ngày dự trữ mục tiêu.
+suggested_qty
+NUMERIC(14,3)
+NOT NULL, CHECK >= 0
+Số lượng hệ thống đề xuất ban đầu.
+approved_qty
+NUMERIC(14,3)
+NULL, CHECK >= 0
+Số lượng sau khi Admin quyết định.
+estimated_cost
+NUMERIC(14,2)
+NULL, CHECK >= 0
+Chi phí ước tính theo lượng đề xuất và giá nhập.
+reason
+TEXT
+NOT NULL
+Giải thích cảnh báo và các căn cứ chính.
+Ràng buộc
+—
+UNIQUE(recommendation_id, product_id)
+Một sản phẩm xuất hiện tối đa một lần trong cùng đợt đề xuất.
+
+Bảng audit_logs – nhật ký thao tác quan trọng (khuyến nghị)
+Tên trường
+Kiểu dữ liệu gợi ý
+Ràng buộc
+Ý nghĩa / quy tắc
+audit_log_id
+BIGINT
+PK, tự tăng
+Định danh bản ghi nhật ký.
+user_id
+BIGINT
+FK → users.user_id, NULL
+Người thực hiện; có thể NULL với tác vụ hệ thống.
+action
+VARCHAR(80)
+NOT NULL
+Ví dụ CREATE_PRODUCT, CONFIRM_RECEIPT, APPROVE_RECOMMENDATION.
+entity_type
+VARCHAR(80)
+NOT NULL
+Loại đối tượng bị tác động.
+entity_id
+VARCHAR(80)
+NULL
+ID đối tượng liên quan.
+before_data
+JSON/JSONB
+NULL
+Giá trị trước thay đổi nếu cần audit.
+after_data
+JSON/JSONB
+NULL
+Giá trị sau thay đổi nếu cần audit.
+created_at
+TIMESTAMP
+NOT NULL
+Thời điểm thao tác.
+
+6.2. Quan hệ dữ liệu chính
+Một danh mục có thể có nhiều sản phẩm; mỗi sản phẩm có nhiều giao dịch kho; một người dùng có thể tạo nhiều giao dịch. Mỗi sản phẩm có thể có một bộ thông số tồn kho. Một đợt đề xuất có nhiều dòng chi tiết, và mỗi dòng chi tiết tham chiếu đến một sản phẩm. Nếu triển khai đơn đặt hàng, một đơn có nhiều dòng hàng và các dòng này giúp xác định lượng hàng đang về.
+6.3. Nguyên tắc toàn vẹn dữ liệu
+Số lượng nhập/xuất phải lớn hơn 0; loại giao dịch xác định chiều tăng/giảm tồn.
+Mã SKU phải duy nhất nếu nhóm sử dụng SKU.
+Sản phẩm và người dùng được tham chiếu bằng khóa ngoại hợp lệ.
+Cập nhật số dư và ghi giao dịch phải nguyên tử; tránh số dư lệch với lịch sử.
+Đề xuất cần lưu lại các giá trị đầu vào tại thời điểm tính để kết quả cũ không thay đổi khi thông số mới được cập nhật.
+Nếu cho phép chỉnh sửa phiếu đã xác nhận, phải có lịch sử hoặc giao dịch điều chỉnh.
+6.4. Cài đặt cơ sở dữ liệu và nhập dữ liệu
+Yêu cầu đồ án: cơ sở dữ liệu phải được cài đặt trên máy tính và có dữ liệu để chạy thử. Đề xuất dùng PostgreSQL và chia script thành ba tệp chạy theo thứ tự: 01_schema.sql (tạo bảng), 02_seed.sql (dữ liệu mẫu), 03_views.sql (các view ở mục 6.6). Script dưới đây tạo các bảng cốt lõi theo từ điển dữ liệu ở mục 6.1; các bảng còn lại (users, model_runs, demand_forecasts, purchase_orders, purchase_order_items, inventory_recommendations, recommendation_details, audit_logs) được tạo tương tự theo mô tả ở mục 6.1.
+Script tạo bảng cốt lõi (01_schema.sql)
+CREATE TABLE categories (
+  category_id   BIGSERIAL PRIMARY KEY,
+  category_name VARCHAR(100) NOT NULL UNIQUE,
+  description   TEXT,
+  status        VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+  created_at    TIMESTAMP    NOT NULL DEFAULT now()
+);
+
+CREATE TABLE products (
+  product_id     BIGSERIAL PRIMARY KEY,
+  sku            VARCHAR(50)  NOT NULL UNIQUE,
+  product_name   VARCHAR(180) NOT NULL,
+  category_id    BIGINT       NOT NULL REFERENCES categories(category_id),
+  unit           VARCHAR(30)  NOT NULL,
+  purchase_price NUMERIC(14,2) NOT NULL CHECK (purchase_price >= 0),
+  pack_size      NUMERIC(12,3) NOT NULL DEFAULT 1 CHECK (pack_size > 0),
+  status         VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+  created_at     TIMESTAMP    NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMP    NOT NULL DEFAULT now()
+);
+
+CREATE TABLE inventory_settings (
+  setting_id        BIGSERIAL PRIMARY KEY,
+  product_id        BIGINT NOT NULL UNIQUE REFERENCES products(product_id),
+  safety_stock      NUMERIC(14,3) NOT NULL CHECK (safety_stock >= 0),
+  lead_time_days    NUMERIC(8,2)  NOT NULL CHECK (lead_time_days >= 0),
+  ma_window_days    INTEGER       NOT NULL CHECK (ma_window_days > 0),
+  target_cover_days NUMERIC(8,2)  NOT NULL CHECK (target_cover_days >= 0),
+  updated_at        TIMESTAMP     NOT NULL DEFAULT now()
+);
+
+CREATE TABLE inventory_transactions (
+  transaction_id   BIGSERIAL PRIMARY KEY,
+  transaction_code VARCHAR(40) NOT NULL UNIQUE,
+  product_id       BIGINT NOT NULL REFERENCES products(product_id),
+  transaction_type VARCHAR(20) NOT NULL
+                   CHECK (transaction_type IN ('RECEIPT','ISSUE','ADJUSTMENT')),
+  issue_purpose    VARCHAR(30),
+  quantity         NUMERIC(14,3) NOT NULL CHECK (quantity > 0),
+  unit_cost        NUMERIC(14,2) CHECK (unit_cost >= 0),
+  transaction_at   TIMESTAMP NOT NULL,
+  reference_no     VARCHAR(100),
+  status           VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED',
+  created_at       TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE TABLE stock_balances (
+  product_id  BIGINT PRIMARY KEY REFERENCES products(product_id),
+  on_hand_qty NUMERIC(14,3) NOT NULL CHECK (on_hand_qty >= 0),
+  updated_at  TIMESTAMP NOT NULL DEFAULT now()
+);
+
+CREATE TABLE daily_demand (
+  demand_id    BIGSERIAL PRIMARY KEY,
+  product_id   BIGINT NOT NULL REFERENCES products(product_id),
+  demand_date  DATE   NOT NULL,
+  consumed_qty NUMERIC(14,3) NOT NULL CHECK (consumed_qty >= 0),
+  data_source  VARCHAR(20) NOT NULL DEFAULT 'SIMULATED',
+  UNIQUE (product_id, demand_date)
+);
+
+Dữ liệu mẫu (02_seed.sql)
+INSERT INTO categories (category_name) VALUES
+  ('Đồ uống'), ('Thực phẩm khô'), ('Hóa mỹ phẩm'), ('Văn phòng phẩm');
+
+INSERT INTO products (sku, product_name, category_id, unit, purchase_price, pack_size) VALUES
+  ('DU001', 'Nước suối 500ml',   1, 'chai', 3500, 24),
+  ('DU002', 'Trà xanh 455ml',    1, 'chai', 6000, 24),
+  ('TP001', 'Mì gói',            2, 'gói',  3200, 30),
+  ('HM001', 'Dầu gội 650g',      3, 'chai', 78000, 12),
+  ('VP001', 'Giấy A4 70gsm',     4, 'ream', 56000, 5);
+
+INSERT INTO inventory_settings
+  (product_id, safety_stock, lead_time_days, ma_window_days, target_cover_days)
+VALUES (1, 80, 3, 7, 7), (2, 60, 3, 7, 7), (3, 90, 4, 7, 7),
+       (4, 20, 5, 7, 10), (5, 10, 4, 7, 14);
+
+SELECT setseed(0.42);
+INSERT INTO daily_demand (product_id, demand_date, consumed_qty, data_source)
+SELECT p.product_id, d::date,
+       GREATEST(0, ROUND(base.q * (1 + 0.25 * SIN(EXTRACT(DOW FROM d) * 0.9))
+                         + (random() - 0.5) * base.q * 0.4)),
+       'SIMULATED'
+FROM products p
+JOIN (VALUES (1, 40), (2, 25), (3, 30), (4, 6), (5, 3)) AS base(pid, q)
+  ON base.pid = p.product_id
+CROSS JOIN generate_series(DATE '2026-05-01', DATE '2026-10-30', INTERVAL '1 day') AS d;
+
+INSERT INTO stock_balances (product_id, on_hand_qty)
+VALUES (1, 150), (2, 400), (3, 120), (4, 30), (5, 60);
+
+Lưu ý khi nhập dữ liệu:
+Dữ liệu tiêu thụ trong script là dữ liệu mô phỏng (data_source = SIMULATED), tạo cho 5 sản phẩm trong 183 ngày. Khi nộp bài nên mở rộng lên ít nhất 20 sản phẩm và ghi rõ nguồn dữ liệu trong báo cáo.
+Dữ liệu mô phỏng kết thúc ngày 30/10/2026. View MA ở mục 6.6 lấy n ngày liền trước CURRENT_DATE nên khi chạy demo sau ngày này, cần sinh thêm dữ liệu đến sát ngày demo hoặc thay CURRENT_DATE bằng tham số ngày tính toán; nếu không, sản phẩm sẽ bị đánh dấu Thiếu dữ liệu.
+Tồn kho ban đầu (stock_balances) và các phiếu nhập/xuất mẫu cần khớp với nhau: số dư phải bằng tổng nhập trừ tổng xuất đã xác nhận.
+Script viết cho PostgreSQL; nhóm cần chạy thử trên máy sẽ dùng để báo cáo và điều chỉnh nếu dùng hệ quản trị khác.
+6.5. Mô hình dữ liệu đa chiều cho OLAP (khuyến khích)
+Để phân tích theo nhiều góc nhìn, dữ liệu giao dịch được tổ chức lại theo mô hình sao (star schema): một bảng sự kiện ở giữa và các bảng chiều xung quanh. Với thời gian ngắn, nhóm có thể tạo bảng sự kiện và bảng chiều dưới dạng view trên các bảng đã có, không cần xây dựng quy trình nạp dữ liệu (ETL) riêng.
+
+Hình 2. Mô hình sao phục vụ phân tích OLAP
+Các thao tác OLAP chính và cách thực hiện bằng SQL:
+Thao tác
+Ý nghĩa
+Ví dụ trong đề tài
+Cách làm bằng SQL
+Roll-up
+Tổng hợp lên mức cao hơn
+Tiêu thụ theo ngày → tháng → năm
+GROUP BY ROLLUP (năm, tháng, danh mục)
+Drill-down
+Đi xuống mức chi tiết hơn
+Từ tiêu thụ của danh mục Đồ uống xuống từng sản phẩm
+Thêm cột chiều chi tiết vào GROUP BY
+Slice
+Cố định một giá trị của một chiều
+Chỉ xem danh mục Đồ uống
+Thêm WHERE theo một chiều
+Dice
+Chọn khoảng giá trị trên nhiều chiều
+Quý 3 và hai danh mục được chọn
+WHERE theo nhiều chiều
+Pivot
+Xoay chiều thành cột
+Tháng 8, 9, 10 thành ba cột
+SUM(...) FILTER (WHERE ...)
+
+6.6. Câu lệnh SQL xử lý dữ liệu và xuất thông tin hỗ trợ ra quyết định
+Theo yêu cầu đồ án, các phép tính hỗ trợ ra quyết định được thực hiện bằng câu lệnh SQL. Backend và GUI chỉ gọi các view/truy vấn này, kiểm tra quyền và hiển thị kết quả. Các giá trị tính từ dữ liệu: d (nhu cầu/ngày), IP, ROP và Q. Giả định của phiên bản đầu: lượng đã cam kết xuất (committed) bằng 0; hàng đang về lấy từ các đơn đặt hàng chưa nhận đủ (bảng purchase_orders và purchase_order_items); nếu nhóm chưa làm đơn đặt hàng, thay truy vấn con on_order_qty bằng 0.
+(a) Moving Average: view v_demand_ma
+CREATE OR REPLACE VIEW v_demand_ma AS
+SELECT s.product_id,
+       s.ma_window_days                           AS n_days,
+       COUNT(d.demand_date)                       AS days_with_data,
+       COALESCE(SUM(d.consumed_qty), 0)           AS total_qty,
+       ROUND(COALESCE(SUM(d.consumed_qty), 0) / s.ma_window_days, 3) AS d_per_day
+FROM inventory_settings s
+LEFT JOIN daily_demand d
+       ON d.product_id  = s.product_id
+      AND d.demand_date >= CURRENT_DATE - s.ma_window_days
+      AND d.demand_date <  CURRENT_DATE
+GROUP BY s.product_id, s.ma_window_days;
+
+(b) Inventory Position, ROP và trạng thái cảnh báo: view v_reorder
+CREATE OR REPLACE VIEW v_reorder AS
+SELECT p.product_id, p.sku, p.product_name, c.category_name,
+       p.pack_size, p.purchase_price,
+       b.on_hand_qty,
+       COALESCE(o.on_order_qty, 0)                         AS on_order_qty,
+       b.on_hand_qty + COALESCE(o.on_order_qty, 0)         AS inventory_position,
+       m.d_per_day, s.lead_time_days, s.safety_stock, s.target_cover_days,
+       ROUND(m.d_per_day * s.lead_time_days + s.safety_stock, 3) AS reorder_point,
+       CASE
+         WHEN s.product_id IS NULL                  THEN 'MISSING_CONFIG'
+         WHEN m.days_with_data < m.n_days           THEN 'INSUFFICIENT_DATA'
+         WHEN b.on_hand_qty < 0                     THEN 'INVALID_DATA'
+         WHEN b.on_hand_qty + COALESCE(o.on_order_qty, 0)
+              <= m.d_per_day * s.lead_time_days + s.safety_stock THEN 'REORDER'
+         ELSE 'NORMAL'
+       END AS stock_status
+FROM products p
+JOIN categories c            ON c.category_id = p.category_id
+JOIN stock_balances b        ON b.product_id  = p.product_id
+LEFT JOIN inventory_settings s ON s.product_id = p.product_id
+LEFT JOIN v_demand_ma m      ON m.product_id  = p.product_id
+LEFT JOIN (SELECT i.product_id, SUM(i.ordered_qty - i.received_qty) AS on_order_qty
+           FROM purchase_order_items i
+           JOIN purchase_orders o ON o.purchase_order_id = i.purchase_order_id
+           WHERE o.status IN ('APPROVED','ORDERED','PARTIALLY_RECEIVED')
+           GROUP BY i.product_id) o ON o.product_id = p.product_id
+WHERE p.status = 'ACTIVE';
+
+(c) Số lượng nhập đề xuất cho các sản phẩm ở trạng thái cần xem xét
+SELECT product_id, sku, product_name, inventory_position, reorder_point,
+       GREATEST(0,
+         CEIL((d_per_day * (lead_time_days + target_cover_days)
+               + safety_stock - inventory_position) / pack_size) * pack_size
+       ) AS suggested_qty
+FROM v_reorder
+WHERE stock_status = 'REORDER'
+ORDER BY inventory_position / NULLIF(reorder_point, 0);
+
+(d) Báo cáo nhập – xuất theo kỳ và danh mục (BC02)
+SELECT to_char(t.transaction_at, 'YYYY-MM') AS ky,
+       c.category_name,
+       SUM(t.quantity) FILTER (WHERE t.transaction_type = 'RECEIPT') AS nhap,
+       SUM(t.quantity) FILTER (WHERE t.transaction_type = 'ISSUE')   AS xuat
+FROM inventory_transactions t
+JOIN products p   ON p.product_id  = t.product_id
+JOIN categories c ON c.category_id = p.category_id
+WHERE t.status = 'CONFIRMED'
+  AND t.transaction_at >= DATE '2026-10-01' AND t.transaction_at < DATE '2026-11-01'
+GROUP BY ky, c.category_name
+ORDER BY ky, c.category_name;
+
+(e) Sản phẩm tồn cao, tiêu thụ thấp (BC04)
+SELECT sku, product_name, on_hand_qty, d_per_day,
+       ROUND(on_hand_qty / NULLIF(d_per_day, 0), 1) AS days_of_cover,
+       ROUND(on_hand_qty * purchase_price, 0)        AS stock_value
+FROM v_reorder
+WHERE on_hand_qty / NULLIF(d_per_day, 0) > 60
+ORDER BY days_of_cover DESC;
+
+(f) OLAP: roll-up theo năm, tháng, danh mục
+WITH f AS (
+  SELECT EXTRACT(YEAR  FROM d.demand_date)::int AS nam,
+         EXTRACT(MONTH FROM d.demand_date)::int AS thang,
+         c.category_name                        AS danh_muc,
+         d.consumed_qty
+  FROM daily_demand d
+  JOIN products p   ON p.product_id  = d.product_id
+  JOIN categories c ON c.category_id = p.category_id
+)
+SELECT nam, thang, danh_muc, SUM(consumed_qty) AS tieu_thu
+FROM f
+GROUP BY ROLLUP (nam, thang, danh_muc)      -- roll-up / drill-down
+ORDER BY nam, thang, danh_muc;
+
+(g) OLAP: pivot và dice theo tháng và danh mục
+SELECT c.category_name AS danh_muc,
+       SUM(d.consumed_qty) FILTER (WHERE EXTRACT(MONTH FROM d.demand_date) = 8)  AS t8,
+       SUM(d.consumed_qty) FILTER (WHERE EXTRACT(MONTH FROM d.demand_date) = 9)  AS t9,
+       SUM(d.consumed_qty) FILTER (WHERE EXTRACT(MONTH FROM d.demand_date) = 10) AS t10
+FROM daily_demand d
+JOIN products p   ON p.product_id  = d.product_id
+JOIN categories c ON c.category_id = p.category_id
+WHERE d.demand_date >= DATE '2026-08-01' AND d.demand_date < DATE '2026-11-01'   -- dice
+GROUP BY c.category_name;
+
+Kết quả mong đợi để kiểm tra các view (khớp với ví dụ ở mục 4.12, 4.13 và 12.3): với tiêu thụ 10, 12, 15, 8, 14, 16, 13 trong 7 ngày, d_per_day = 12,571; với d = 13, L = 4, SS = 20 thì reorder_point = 72; với IP = 70 thì stock_status = REORDER và, khi T = 7, quy cách đóng gói bằng 1, suggested_qty = 93.
+7. KIẾN TRÚC VÀ CÔNG NGHỆ ĐỀ XUẤT
+7.1. Kiến trúc tổng thể
+Có thể thiết kế theo kiến trúc ba lớp. Lớp giao diện (Presentation Layer) là web frontend để Admin/Staff thao tác. Lớp nghiệp vụ (Business Logic Layer) là backend xử lý đăng nhập, phân quyền, nhập/xuất, tồn kho, công thức MA/ROP, đề xuất và báo cáo. Lớp dữ liệu (Data Layer) là cơ sở dữ liệu lưu người dùng, sản phẩm, giao dịch và kết quả.
+Mô hình ML có thể được đóng gói thành module Python riêng và cung cấp API nội bộ cho backend, hoặc được gọi như một tiến trình dự báo định kỳ. Với nhóm mới làm AI, tách một API Python đơn giản thường dễ kiểm thử; tuy nhiên cần tránh triển khai quá nhiều dịch vụ nếu chưa cần thiết. Backend vẫn là nơi kiểm tra quyền và tính toán các quy tắc nghiệp vụ quan trọng.
+Theo yêu cầu đồ án, việc xử lý dữ liệu và xuất thông tin hỗ trợ ra quyết định được thực hiện bằng câu lệnh SQL (các view và truy vấn ở mục 6.6). Backend gọi các view này, kiểm tra quyền và trả kết quả cho giao diện GUI. Module ML bằng Python (nếu làm) là phần tùy chọn bổ sung nguồn dự báo cho giá trị d.
+7.2. Công nghệ có thể lựa chọn
+Frontend có thể dùng Vue hoặc React; backend có thể dùng Spring Boot hoặc Laravel; cơ sở dữ liệu có thể dùng PostgreSQL hoặc MySQL. Phần Machine Learning có thể dùng Python với pandas và scikit-learn. Đây là các lựa chọn tham khảo, không cần dùng tất cả. Nhóm nên chọn theo công nghệ đã học và đang sử dụng để tránh tốn thời gian đổi stack.
+7.3. Luồng xử lý từ giao dịch đến quyết định
+Staff tạo phiếu nhập hoặc xuất và gửi lên backend.
+Backend kiểm tra dữ liệu, quyền và tồn khả dụng; giao dịch hợp lệ được ghi nhận.
+Số dư tồn kho được cập nhật nhất quán và lịch sử giao dịch được lưu.
+Module phân tích lấy lịch sử tiêu thụ theo từng sản phẩm.
+Moving Average và/hoặc mô hình ML tạo ước lượng nhu cầu.
+Backend lấy Safety Stock, Lead Time và Inventory Position để tính ROP.
+Nếu IP ≤ ROP, hệ thống tính lượng nhập đề xuất theo chính sách tồn kho mục tiêu.
+Giao diện hiển thị cảnh báo, căn cứ và lượng đề xuất.
+Admin xem xét, điều chỉnh, duyệt hoặc từ chối; hệ thống lưu dấu vết quyết định.
+8. MÔ TẢ CÁC MÀN HÌNH CẦN LÀM
+8.1. Màn hình đăng nhập (UC01)
+Màn hình gồm tên đăng nhập/email, mật khẩu, nút đăng nhập và thông báo lỗi. Không hiển thị chi tiết nhạy cảm khi đăng nhập thất bại. Sau khi đăng nhập, người dùng được điều hướng theo role và không thể truy cập chức năng ngoài quyền.
+8.2. Dashboard (UC02)
+Dashboard hiển thị tổng số sản phẩm đang hoạt động, tổng số lượng tồn, số sản phẩm dưới ROP, số đề xuất đang chờ Admin xem xét và thống kê nhập/xuất trong khoảng thời gian chọn. Có thể thêm danh sách sản phẩm cần chú ý và giao dịch gần nhất. Mỗi chỉ số cần có định nghĩa rõ ràng; ví dụ số sản phẩm dưới ROP phải được tính từ cùng quy tắc IP và ROP dùng ở trang phân tích.
+8.3. Quản lý sản phẩm (UC03, UC04)
+Trang có bảng danh sách, tìm kiếm theo mã/tên, lọc theo danh mục/trạng thái và form thêm/sửa. Admin được thay đổi dữ liệu theo quyền; Staff chủ yếu xem. Form cần thông báo lỗi cụ thể như thiếu tên, SKU trùng hoặc giá trị không hợp lệ.
+8.4. Nhập kho và xuất kho (UC06, UC07)
+Mỗi màn hình cần form chọn sản phẩm, nhập số lượng, ngày giao dịch và ghi chú. Màn hình xuất kho cần hiển thị tồn khả dụng trước khi xác nhận. Sau khi thành công, hệ thống thông báo mã phiếu và số dư mới. Nếu thất bại, dữ liệu tồn không được thay đổi.
+8.5. Màn hình tồn kho (UC08, UC11)
+Màn hình hiển thị danh sách sản phẩm kèm tồn hiện tại, hàng đang về nếu có, lượng đã cam kết, IP, Safety Stock và ROP. Người dùng có thể lọc trạng thái bình thường, cần xem xét, thiếu thông số hoặc dữ liệu không đủ. Nhấp vào sản phẩm sẽ mở lịch sử nhập/xuất và phần phân tích.
+8.6. Màn hình phân tích và dự báo (UC09, UC10)
+Màn hình chi tiết sản phẩm hiển thị biểu đồ lượng tiêu thụ lịch sử, MA, kết quả dự báo ML nếu có, Lead Time, Safety Stock, ROP, IP và thời điểm cập nhật. Cần hiển thị nguồn dữ liệu và nhãn cho biết dự báo là từ MA hay ML. Nếu có so sánh mô hình, hiển thị MAE/RMSE trên tập kiểm thử và giải thích ngắn gọn ý nghĩa.
+8.7. Màn hình đề xuất nhập hàng (UC12, UC14)
+Danh sách đề xuất cần có sản phẩm, tồn hiện tại, IP, ROP, nhu cầu/ngày, lượng đề xuất, chi phí ước tính và lý do. Admin có thể mở chi tiết, thay đổi số lượng, nhập lý do, duyệt hoặc từ chối. Staff có thể xem và tạo yêu cầu xem xét nếu được cấp quyền. Mỗi thao tác phải cập nhật trạng thái và lịch sử.
+8.8. Báo cáo (UC13, UC15, UC16)
+Báo cáo cần có bộ lọc ngày, sản phẩm và danh mục. Phiên bản tối thiểu nên có báo cáo nhập/xuất theo kỳ, danh sách sản phẩm dưới ROP, danh sách hàng tồn cao nhưng tiêu thụ thấp và lịch sử đề xuất. Chức năng xuất Excel/PDF là phần mở rộng, không nên ưu tiên trước khi số liệu hiển thị chính xác.
+8.9. Mẫu thiết kế các báo cáo hỗ trợ ra quyết định (vẽ trên giấy)
+Yêu cầu đồ án: thiết kế (vẽ trên giấy) các báo cáo cần có để hỗ trợ ra quyết định. Mỗi mẫu dưới đây gồm phần thông tin chung (mục đích, người dùng, bộ lọc, nguồn dữ liệu) và bố cục bảng cần vẽ. Số liệu trong bố cục chỉ là số minh họa để hình dung cách trình bày, không phải kết quả thực nghiệm. Mọi báo cáo có đầu trang (tên báo cáo, kỳ báo cáo, ngày lập, người lập) và cuối trang (dòng tổng cộng, ghi chú, chữ ký người xem xét).
+BC01 – Tồn kho và cảnh báo ROP
+Mục đích
+Cho biết sản phẩm nào đã chạm hoặc thấp hơn ROP và cần xem xét nhập hàng.
+Người dùng
+Admin, Staff
+Bộ lọc
+Danh mục, trạng thái cảnh báo, tìm theo mã/tên sản phẩm
+Nguồn dữ liệu
+View v_reorder (mục 6.6b)
+Dòng tổng
+Số sản phẩm theo từng trạng thái (Bình thường, Cần xem xét, Thiếu dữ liệu, Chưa cấu hình)
+Bố cục bảng cần vẽ (số liệu minh họa):
+STT
+Mã SP
+Tên sản phẩm
+Tồn
+Đang về
+IP
+d/ngày
+L
+SS
+ROP
+Trạng thái
+1
+DU001
+Nước suối 500ml
+150
+0
+150
+40
+3
+80
+200
+Cần xem xét
+2
+DU002
+Trà xanh 455ml
+400
+0
+400
+25
+3
+60
+135
+Bình thường
+
+BC02 – Nhập – xuất theo kỳ
+Mục đích
+Theo dõi lượng nhập, xuất tiêu thụ và xuất khác theo tháng và danh mục.
+Người dùng
+Admin, Staff
+Bộ lọc
+Khoảng ngày, sản phẩm, danh mục
+Nguồn dữ liệu
+Truy vấn (d) ở mục 6.6; chỉ tính giao dịch ở trạng thái CONFIRMED
+Dòng tổng
+Tổng nhập, tổng xuất, chênh lệch của toàn kỳ
+Bố cục bảng cần vẽ (số liệu minh họa):
+Kỳ
+Danh mục
+Tổng nhập
+Xuất tiêu thụ
+Xuất khác (hỏng, điều chuyển)
+Chênh lệch (nhập − xuất)
+2026-10
+Đồ uống
+1.200
+1.050
+12
+138
+2026-10
+Thực phẩm khô
+900
+870
+0
+30
+
+BC03 – Đề xuất nhập hàng
+Mục đích
+Trình bày các đề xuất nhập hàng kèm căn cứ để Admin duyệt, điều chỉnh hoặc từ chối.
+Người dùng
+Admin (duyệt); Staff (xem)
+Bộ lọc
+Trạng thái xử lý, khoảng ngày tạo, danh mục
+Nguồn dữ liệu
+Truy vấn (c) ở mục 6.6; bảng inventory_recommendations, recommendation_details
+Dòng tổng
+Tổng chi phí ước tính của các đề xuất đang chờ xem xét
+Bố cục bảng cần vẽ (số liệu minh họa):
+STT
+Sản phẩm
+IP
+ROP
+d/ngày
+L
+T
+SS
+Q đề xuất
+Chi phí ước tính
+Trạng thái
+1
+Sản phẩm ví dụ A
+70
+72
+13
+4
+7
+20
+93
+1.116.000
+Chờ xem xét
+
+BC04 – Hàng tồn cao, tiêu thụ thấp
+Mục đích
+Phát hiện sản phẩm giữ nhiều vốn nhưng bán chậm để xem xét giảm nhập hoặc xử lý tồn.
+Người dùng
+Admin
+Bộ lọc
+Ngưỡng số ngày tồn (mặc định 60 ngày), danh mục
+Nguồn dữ liệu
+Truy vấn (e) ở mục 6.6
+Dòng tổng
+Tổng giá trị tồn của các sản phẩm trong danh sách
+Bố cục bảng cần vẽ (số liệu minh họa):
+STT
+Mã SP
+Tên sản phẩm
+Tồn
+d/ngày
+Số ngày tồn
+Giá nhập
+Giá trị tồn
+1
+VP001
+Giấy A4 70gsm
+60
+0,5
+120
+56.000
+3.360.000
+
+BC05 – So sánh Moving Average và Machine Learning
+Mục đích
+Cho thấy phương pháp dự báo nào được chọn dựa trên sai số trên cùng giai đoạn kiểm thử.
+Người dùng
+Admin
+Bộ lọc
+Sản phẩm, giai đoạn kiểm thử, phiên bản mô hình
+Nguồn dữ liệu
+Bảng model_runs, demand_forecasts
+Dòng tổng
+Sai số trung bình của các sản phẩm theo từng phương pháp
+Bố cục bảng cần vẽ (số liệu minh họa):
+Sản phẩm
+Giai đoạn kiểm thử
+MAE (MA)
+RMSE (MA)
+MAE (ML)
+RMSE (ML)
+Phương pháp được chọn
+…
+… đến …
+x,xx
+x,xx
+x,xx
+x,xx
+MA hoặc ML
+
+Ghi chú: BC05 chỉ có ý nghĩa khi nhóm triển khai phần AI; các giá trị x,xx được thay bằng kết quả thực nghiệm.
+8.10. GUI và ánh xạ màn hình với SQL
+GUI là giao diện web theo công nghệ nhóm chọn ở mục 7.2. Bảng dưới đây cho biết mỗi màn hình lấy dữ liệu từ đâu để nhóm không viết logic tính toán trong giao diện.
+Màn hình (mục 8.x)
+Nguồn dữ liệu / câu lệnh SQL
+Thành phần chính
+Đăng nhập (8.1)
+users (kiểm tra mật khẩu băm, trạng thái tài khoản)
+Form đăng nhập, thông báo lỗi
+Dashboard (8.2)
+Đếm và tổng hợp từ v_reorder và bảng đề xuất
+Các chỉ số, danh sách sản phẩm cần chú ý
+Quản lý sản phẩm (8.3)
+products, categories, inventory_settings
+Bảng danh sách, form thêm/sửa, bộ lọc
+Nhập/xuất kho (8.4)
+INSERT inventory_transactions và UPDATE stock_balances trong một transaction
+Form phiếu, hiển thị tồn khả dụng, mã phiếu
+Tồn kho (8.5)
+v_reorder
+Bảng tồn, IP, ROP, nhãn trạng thái
+Phân tích và dự báo (8.6)
+v_demand_ma, daily_demand, demand_forecasts, model_runs
+Biểu đồ tiêu thụ, MA, ML, MAE/RMSE
+Đề xuất nhập hàng (8.7)
+Truy vấn (c), inventory_recommendations, recommendation_details
+Danh sách đề xuất, nút duyệt/điều chỉnh/từ chối
+Báo cáo (8.8, 8.9)
+Truy vấn (d), (e), (f), (g) và báo cáo BC01 – BC05
+Bộ lọc, bảng báo cáo, bảng pivot
+
+Nếu thời gian hạn chế, GUI tối thiểu để chứng minh luồng hỗ trợ ra quyết định gồm 4 màn hình: Đăng nhập, Nhập/Xuất kho, Tồn kho và cảnh báo ROP, Đề xuất nhập hàng.
+9. FLOWCHART (LƯU ĐỒ CHỨNG TỪ, LƯU ĐỒ CHƯƠNG TRÌNH) VÀ USE CASE CẦN THIẾT KẾ
+9.1. Ký hiệu sử dụng trong lưu đồ chứng từ
+Đồ án yêu cầu thiết kế lưu đồ chứng từ và lưu đồ chương trình. Lưu đồ chứng từ mô tả đường đi của chứng từ và dữ liệu giữa các bộ phận (mỗi bộ phận là một cột, hay còn gọi là làn), nên các lưu đồ ở mục 9.2 – 9.4 chia theo bộ phận và dùng bộ ký hiệu chuẩn dưới đây. Lưu đồ chương trình (mục 9.7) mô tả thuật toán xử lý bên trong hệ thống.
+
+Hình 3. Một số ký hiệu thường dùng trong lưu đồ chứng từ
+9.2. Lưu đồ chứng từ nghiệp vụ nhập kho (UC06)
+
+Hình 4. Lưu đồ chứng từ nghiệp vụ nhập kho
+Bắt đầu → Staff chọn chức năng nhập kho → nhập sản phẩm và số lượng → backend kiểm tra quyền và dữ liệu → nếu không hợp lệ thì hiển thị lỗi và cho sửa → nếu hợp lệ thì ghi phiếu và cập nhật tồn trong transaction → lưu người thực hiện và thời gian → thông báo thành công → kết thúc.
+9.3. Lưu đồ chứng từ nghiệp vụ xuất kho (UC07)
+
+Hình 5. Lưu đồ chứng từ nghiệp vụ xuất kho
+Bắt đầu → Staff chọn chức năng xuất kho → nhập sản phẩm, số lượng và mục đích → backend kiểm tra quyền, dữ liệu và tồn khả dụng → nếu tồn không đủ thì từ chối và thông báo → nếu hợp lệ thì ghi giao dịch xuất, giảm tồn và lưu lịch sử → nếu là xuất tiêu thụ thì cập nhật dữ liệu nhu cầu → thông báo thành công → kết thúc.
+9.4. Lưu đồ chứng từ phân tích và đề xuất nhập hàng (UC09 – UC14)
+
+Hình 6. Lưu đồ chứng từ phân tích và đề xuất nhập hàng
+Bắt đầu chu kỳ phân tích → lấy dữ liệu tiêu thụ → kiểm tra độ đầy đủ → nếu không đủ thì hiển thị trạng thái thiếu dữ liệu → nếu đủ thì tính MA và chạy ML khi mô hình sẵn sàng → chọn dự báo đã được đánh giá → lấy Lead Time, Safety Stock và IP → tính ROP → so sánh IP với ROP → nếu IP > ROP thì chưa tạo đề xuất thường lệ → nếu IP ≤ ROP thì tính Q theo chính sách tồn kho mục tiêu → lưu căn cứ và hiển thị đề xuất → Admin duyệt/chỉnh/từ chối → lưu lịch sử.
+9.5. Sơ đồ Use Case tổng quát
+Sơ đồ Use Case tổng quát (Hình 1) và danh mục Use Case UC01 – UC16 được trình bày ở mục 4.1 và là cơ sở thống nhất cho toàn bộ tài liệu: mã Use Case được dùng lại ở mục yêu cầu chức năng, màn hình và lưu đồ. Các Use Case chỉ Admin thực hiện được phân biệt rõ trên sơ đồ.
+9.6. Đặc tả Use Case quan trọng
+Nên viết đặc tả chi tiết cho ít nhất ba Use Case: Nhập kho, Xuất kho và Tạo/duyệt đề xuất nhập hàng. Mỗi đặc tả cần có tên, mục tiêu, actor, tiền điều kiện, luồng chính, luồng thay thế/ngoại lệ, hậu điều kiện và quy tắc nghiệp vụ. Ví dụ, Use Case Xuất kho có ngoại lệ khi số lượng yêu cầu lớn hơn tồn khả dụng; Use Case đề xuất nhập hàng có ngoại lệ khi thiếu dữ liệu tiêu thụ hoặc thiếu Safety Stock/Lead Time. Trong tài liệu này: Nhập kho (UC06), Xuất kho (UC07) và Tạo/duyệt đề xuất nhập hàng (UC12, UC14).
+9.7. Lưu đồ chương trình tính ROP và lượng nhập đề xuất
+Lưu đồ chương trình mô tả thuật toán xử lý cho một sản phẩm, từ kiểm tra cấu hình và dữ liệu đến tính IP, ROP, Q và lưu đề xuất. Thuật toán này được cài đặt bằng các view/truy vấn ở mục 6.6.
+
+Hình 7. Lưu đồ chương trình tính ROP và lượng nhập đề xuất
+10. YÊU CẦU PHI CHỨC NĂNG
+10.1. Bảo mật
+Mật khẩu phải được băm; API kiểm tra xác thực và phân quyền; dữ liệu đầu vào được kiểm tra phía backend; lỗi không tiết lộ thông tin nhạy cảm. Các endpoint quản trị phải giới hạn cho Admin.
+10.2. Tính toàn vẹn
+Không cho số lượng nhập/xuất bằng 0 hoặc âm; không cho xuất vượt tồn nếu chính sách không cho phép; ghi giao dịch và cập nhật số dư trong cùng transaction. Công thức MA, ROP và lượng đề xuất cần có test unit với các ví dụ tính tay.
+10.3. Hiệu năng và khả năng sử dụng
+Với quy mô đồ án, hệ thống nên phản hồi các thao tác thông thường trong vài giây trên dữ liệu mẫu. Bảng dữ liệu cần có tìm kiếm, phân trang khi cần và thông báo lỗi dễ hiểu. Giao diện phải thể hiện cả trạng thái bằng chữ, không chỉ bằng màu.
+10.4. Khả năng bảo trì
+Nên tách logic nghiệp vụ khỏi giao diện. Công thức dự báo, ROP và lượng đề xuất nên đặt trong module/service riêng để dễ kiểm thử và thay đổi. Thông số như cửa sổ MA hoặc Safety Stock không nên viết cứng trong nhiều nơi của mã nguồn.
+10.5. Khả năng giải thích
+Mỗi đề xuất cần truy xuất được dữ liệu đầu vào và công thức đã sử dụng. Nếu kết quả dùng ML, cần lưu tên mô hình, thời điểm chạy và cách đánh giá. Người dùng phải hiểu vì sao hệ thống cảnh báo và có quyền đưa ra quyết định cuối cùng theo vai trò.
+11. KẾ HOẠCH THỰC HIỆN THEO TUẦN
+Hạn nộp đồ án là ngày 28/11/2026. Tài liệu được cập nhật ngày 31/10/2026 nên thời gian còn lại khoảng 4 tuần. Kế hoạch 8 tuần ban đầu vì vậy được nén thành 4 tuần theo thứ tự ưu tiên: sáu yêu cầu bắt buộc của đồ án trước, phần khuyến khích (AI, OLAP) sau. Ngày báo cáo kết quả trên lớp theo lịch giảng viên thông báo.
+Tuần
+Thời gian
+Công việc chính
+Đầu ra (yêu cầu đồ án)
+1
+31/10 – 06/11
+Chốt phạm vi, quy tắc nghiệp vụ và công nghệ. Vẽ Use Case tổng quát, lập danh mục UC01 – UC16 và đặc tả Use Case. Lập bảng Use Case hỗ trợ ra quyết định và quy trình hỗ trợ/ra quyết định. Vẽ lưu đồ chứng từ nhập kho, xuất kho, đề xuất nhập hàng và lưu đồ chương trình. Thiết kế ERD.
+Yêu cầu 1, 2, 3 (bản nháp) và ERD
+2
+07/11 – 13/11
+Tạo cơ sở dữ liệu bằng script, nhập dữ liệu mẫu/mô phỏng. Làm đăng nhập, phân quyền, quản lý sản phẩm, nhập/xuất/tồn. Viết SQL cho MA, IP, ROP, Q. Vẽ 5 mẫu báo cáo trên giấy. Mốc kiểm tra cuối tuần: có CSDL, nhập/xuất/tồn và view ROP chạy đúng ví dụ tính tay.
+Yêu cầu 4, 5 và phần đầu yêu cầu 6
+3
+14/11 – 20/11
+Hoàn thiện SQL báo cáo và GUI (tồn kho, cảnh báo, đề xuất, duyệt đề xuất, báo cáo). Kiểm thử nghiệp vụ. Nếu còn thời gian: MA so với ML bằng MAE/RMSE và truy vấn OLAP (roll-up, pivot).
+Yêu cầu 6; phần khuyến khích (AI, OLAP)
+4
+21/11 – 27/11
+Chạy toàn bộ test case, sửa lỗi, tạo dữ liệu demo. Hoàn thiện Bộ hồ sơ Phân tích và Thiết kế HTTT, chụp ảnh minh chứng, làm slide, tập trình bày. Đóng gói Documents và Software.
+Báo cáo, Files (Documents + Software)
+Hạn
+28/11/2026
+Nộp bài và báo cáo kết quả trên lớp.
+Toàn bộ kết quả nộp
+
+Nguyên tắc cắt giảm khi trễ tiến độ: giữ đủ sáu yêu cầu bắt buộc và thời gian kiểm thử; cắt phần ML trước, sau đó thu gọn OLAP còn hai truy vấn (roll-up và pivot). Không cắt phần kiểm thử để thêm tính năng phụ.
+12. KỊCH BẢN KIỂM THỬ CHI TIẾT
+12.1. Kiểm thử tài khoản và phân quyền
+Đăng nhập đúng thông tin: vào đúng dashboard theo role.
+Đăng nhập sai mật khẩu: hiển thị lỗi, không tạo phiên hợp lệ.
+Staff gọi API quản lý người dùng: backend từ chối.
+Tài khoản bị khóa: không được đăng nhập.
+12.2. Kiểm thử nhập/xuất kho
+Tồn ban đầu 50, nhập 20: tồn sau giao dịch phải là 70.
+Tồn ban đầu 50, xuất 15: tồn sau giao dịch phải là 35.
+Xuất 60 khi tồn là 50: hệ thống từ chối và tồn vẫn là 50.
+Nhập số lượng 0 hoặc âm: hệ thống báo lỗi.
+Lỗi khi ghi giao dịch: không được cập nhật số dư một phần.
+Kiểm tra lịch sử: giao dịch có đúng sản phẩm, số lượng, thời điểm và người thực hiện.
+12.3. Kiểm thử MA, ROP và đề xuất
+Dữ liệu tiêu thụ 10, 12, 15, 8, 14, 16, 13 cho MA 7 ngày xấp xỉ 12,57 đơn vị/ngày.
+Với d=13, L=4, SS=20 thì ROP phải bằng 72.
+Nếu IP=70 và ROP=72 thì tạo cảnh báo; nếu IP=80 thì không kích hoạt đề xuất thường lệ.
+Nếu thiếu Lead Time hoặc Safety Stock, hệ thống phải báo thiếu cấu hình thay vì tự dùng số không có căn cứ.
+Nếu có hàng đang về, IP phải tính đúng số lượng chưa nhận và không đếm hai lần lượng đã nhận.
+Khi Admin duyệt hoặc thay đổi số lượng, trạng thái, người duyệt, thời điểm và lý do phải được lưu.
+12.4. Kiểm thử AI
+Mô hình huấn luyện được từ dữ liệu đã làm sạch và có thể chạy lại.
+Tập kiểm thử nằm sau tập huấn luyện theo thời gian.
+MA và ML được đánh giá trên cùng các ngày và cùng đơn vị đo.
+MAE/RMSE được tính đúng và ghi rõ là kết quả thực nghiệm trên bộ dữ liệu nào.
+Nếu dữ liệu không đủ, hệ thống hiển thị cảnh báo và không đưa ra tuyên bố mô hình chính xác.
+Dự báo được chuyển sang ROP đúng đơn vị; dự báo tổng tuần không bị nhầm với nhu cầu/ngày.
+12.5. Kiểm thử SQL, báo cáo và OLAP
+View v_demand_ma với tiêu thụ 10, 12, 15, 8, 14, 16, 13 trong 7 ngày: d_per_day = 12,571.
+Sản phẩm có d = 13, L = 4, SS = 20, IP = 70: reorder_point = 72, stock_status = REORDER; với T = 7 và quy cách đóng gói bằng 1 thì suggested_qty = 93.
+Cùng sản phẩm với IP = 80: stock_status = NORMAL và không xuất hiện trong truy vấn đề xuất.
+Sản phẩm chưa có dòng inventory_settings: MISSING_CONFIG; sản phẩm có ít hơn n ngày dữ liệu: INSUFFICIENT_DATA.
+Số sản phẩm dưới ROP trên dashboard bằng số dòng REORDER của báo cáo BC01 (cùng một view).
+Tổng nhập, tổng xuất của BC02 khớp với tổng các giao dịch CONFIRMED trong cùng kỳ.
+Truy vấn ROLLUP: dòng tổng của từng cấp bằng tổng các dòng chi tiết bên dưới; kết quả pivot khớp với kết quả group by thông thường.
+13. SẢN PHẨM BÀN GIAO VÀ CÁCH TRÌNH BÀY
+13.1. Tài liệu
+Mô tả bài toán, mục tiêu, phạm vi và đối tượng sử dụng.
+Danh sách yêu cầu chức năng và phi chức năng.
+Sơ đồ Use Case và đặc tả Use Case quan trọng.
+Flowchart nhập kho, xuất kho và quy trình DSS.
+ERD, mô tả bảng dữ liệu và ràng buộc.
+Mô tả kiến trúc ba lớp và cách tích hợp mô hình AI.
+Công thức MA, Safety Stock, ROP, Inventory Position và lượng đề xuất.
+Báo cáo huấn luyện/đánh giá AI, gồm dữ liệu, cách chia tập và MAE/RMSE.
+Test case, kết quả kiểm thử, ảnh giao diện và hướng dẫn cài đặt/chạy.
+Theo yêu cầu đồ án IS402: Báo cáo trình bày dưới dạng Bộ hồ sơ Phân tích và Thiết kế HTTT, Files gồm Documents và Software, và báo cáo kết quả trên lớp; hạn nộp 28/11/2026.
+Sơ đồ Use Case tổng quát, danh mục Use Case UC01 – UC16, bảng Use Case hỗ trợ ra quyết định và quy trình hỗ trợ/ra quyết định (mục 4.1 – 4.3, 9.6).
+Lưu đồ chứng từ và lưu đồ chương trình theo bộ ký hiệu chuẩn (mục 9).
+Script tạo cơ sở dữ liệu, dữ liệu mẫu và các view/truy vấn SQL (mục 6.4 – 6.6).
+Bản vẽ các mẫu báo cáo hỗ trợ ra quyết định (mục 8.9).
+Phần mềm có GUI chạy được và hướng dẫn cài đặt; phần khuyến khích nếu làm: mô hình AI và truy vấn OLAP.
+13.2. Kịch bản demo nên trình bày
+Bắt đầu bằng một sản phẩm có lịch sử tiêu thụ. Cho thấy tồn hiện tại và lịch sử nhập/xuất. Mở trang phân tích để trình bày MA và dự báo ML nếu đã tích hợp. Giải thích Lead Time, Safety Stock và cách tính ROP. Sau đó tạo hoặc chọn tình huống IP thấp hơn ROP để hệ thống tạo đề xuất, trình bày lượng nhập và căn cứ. Cuối cùng đăng nhập bằng Admin để duyệt hoặc điều chỉnh đề xuất, rồi mở lịch sử để chứng minh quyết định được lưu.
+13.3. Cách chứng minh AI có giá trị
+Không chỉ chụp màn hình có chữ “AI”. Cần đưa ra bảng kết quả thực nghiệm trong báo cáo hoặc slide: tên bộ dữ liệu, khoảng thời gian, số sản phẩm/số bản ghi, cách chia tập, MAE/RMSE của Moving Average và mô hình ML. Nếu mô hình ML tốt hơn, trình bày mức cải thiện. Nếu không tốt hơn, giải thích giới hạn dữ liệu và giữ MA làm baseline. Sự trung thực trong đánh giá quan trọng hơn việc cố chứng minh AI luôn tốt.
+13.4. Cấu trúc đề xuất của Bộ hồ sơ Phân tích và Thiết kế HTTT
+Bộ hồ sơ nên sắp xếp theo thứ tự các yêu cầu của đồ án để giảng viên dễ đối chiếu:
+Giới thiệu, lĩnh vực được chọn và mục tiêu.
+Mô tả các chức năng quản lý của hệ thống bằng Use Case: sơ đồ tổng quát, danh mục và đặc tả Use Case.
+Chức năng và quy trình hỗ trợ ra quyết định.
+Thiết kế lưu đồ chứng từ và lưu đồ chương trình.
+Thiết kế và cài đặt cơ sở dữ liệu: ERD, từ điển dữ liệu, script, dữ liệu mẫu.
+Thiết kế các báo cáo hỗ trợ ra quyết định.
+Câu lệnh SQL và giao diện GUI.
+Phần khuyến khích: AI dự báo và OLAP.
+Kiểm thử, đánh giá, hạn chế và hướng phát triển. Phụ lục: script, hình ảnh giao diện, hướng dẫn cài đặt và chạy.
+14. RỦI RO, GIỚI HẠN VÀ BIỆN PHÁP
+14.1. Dữ liệu không đủ
+Rủi ro lớn nhất là không có lịch sử tiêu thụ đủ dài. Biện pháp là chuẩn bị dữ liệu mẫu có cấu trúc, ghi rõ nguồn và tính chất mô phỏng, đồng thời thiết kế hệ thống có trạng thái “chưa đủ dữ liệu”. Không nên huấn luyện mô hình phức tạp trên một lượng dữ liệu rất nhỏ rồi kết luận độ chính xác cao.
+14.2. Dự báo sai
+Dự báo có thể sai do khuyến mãi, ngày lễ, thay đổi nhu cầu hoặc dữ liệu nhiễu. Biện pháp là hiển thị dự báo cùng nguồn và thời điểm cập nhật, so sánh với baseline, cho phép Admin xem xét và không tự động phát hành đơn mua.
+14.3. Tồn kho lệch
+Nếu cập nhật tồn không đồng bộ với giao dịch, ROP có thể kích hoạt sai. Biện pháp là ghi giao dịch và cập nhật số dư trong transaction, không cho sửa trực tiếp số dư ngoài quy trình điều chỉnh, và có báo cáo đối soát.
+14.4. Phạm vi quá rộng
+Việc thêm chatbot, tối ưu nhà cung cấp hoặc nhiều thuật toán có thể làm chậm phần bắt buộc. Thứ tự ưu tiên nên là: nghiệp vụ kho đúng → công thức DSS đúng → AI dự báo và đánh giá → giao diện/báo cáo → tính năng mở rộng.
+14.5. Thời gian còn lại ngắn
+Từ ngày 31/10/2026 đến hạn nộp 28/11/2026 chỉ còn khoảng 4 tuần. Rủi ro là làm dàn trải hoặc dồn việc tài liệu và kiểm thử vào cuối. Biện pháp: phân công người phụ trách cho từng yêu cầu bắt buộc, đặt mốc kiểm tra cuối tuần 2 (CSDL, nhập/xuất/tồn và ROP chạy đúng), làm phần AI và OLAP sau cùng và sẵn sàng cắt giảm theo nguyên tắc ở mục 11.
+15. CÁC QUYẾT ĐỊNH PHẢI CHỐT TRƯỚC KHI CODE
+Dùng dữ liệu thật, dữ liệu giả lập hay nhập dữ liệu từ CSV; ai chịu trách nhiệm chuẩn bị dữ liệu.
+Moving Average tính theo 7, 14 hay 30 ngày; phiên bản đầu nên chọn một giá trị rõ ràng.
+Lượng xuất nào được xem là tiêu thụ để dự báo; cần phân biệt bán, hủy, điều chuyển và điều chỉnh.
+Safety Stock được Admin nhập thủ công hay tính theo một công thức thống kê.
+Lead Time lưu theo sản phẩm hay theo nhà cung cấp; phiên bản đầu có thể lưu theo sản phẩm.
+Inventory Position có tính hàng đang về và lượng đã cam kết không; nếu có thì cần theo dõi đơn đặt hàng.
+Chọn chính sách tính lượng nhập Q và số ngày dự trữ mục tiêu T.
+Mô hình AI dự báo nhu cầu ngày tiếp theo hay nhu cầu nhiều ngày; đơn vị phải nhất quán với ROP.
+Admin có quyền duyệt đề xuất; Staff được xem hay được tạo yêu cầu chờ duyệt.
+Chọn một stack công nghệ phù hợp với kỹ năng nhóm và không đổi stack nếu không cần thiết.
+Cách triển khai OLAP: dùng view hoặc bảng sự kiện và chiều trong cùng cơ sở dữ liệu với truy vấn ROLLUP/pivot, hay dùng công cụ BI; có làm phần này hay không nếu trễ tiến độ.
+Phân công người phụ trách cho từng yêu cầu bắt buộc của đồ án và mốc kiểm tra cuối tuần 2.
+Hệ quản trị cơ sở dữ liệu dùng để báo cáo (PostgreSQL hay MySQL); script phải chạy được trên máy sẽ dùng để trình bày.
+16. KẾT LUẬN VÀ THỨ TỰ ƯU TIÊN
+Đề tài nên được triển khai như một hệ thống hỗ trợ quyết định có căn cứ, không chỉ là phần mềm ghi nhận tồn kho. Phần cốt lõi là dữ liệu giao dịch đáng tin cậy, công thức Moving Average/ROP đúng, cảnh báo có thể giải thích và quy trình Admin xem xét đề xuất. Machine Learning bổ sung khả năng dự báo nhu cầu, nhưng phải được đánh giá với dữ liệu kiểm thử và so sánh với Moving Average.
+Thứ tự triển khai khuyến nghị: (1) chốt quy tắc nghiệp vụ và dữ liệu; (2) thiết kế ERD và phân quyền; (3) hoàn thiện nhập/xuất/tồn; (4) kiểm thử MA, IP, ROP và Q; (5) xây dựng mô hình ML và đánh giá; (6) tích hợp dự báo vào đề xuất; (7) hoàn thiện báo cáo, lịch sử quyết định và demo. Không nên bắt đầu bằng chatbot hoặc giao diện AI khi nghiệp vụ cốt lõi chưa hoạt động chính xác.
+Đối chiếu với đồ án nhóm IS402 và hạn nộp 28/11/2026: các bước (1) – (4) và (7) gắn trực tiếp với sáu yêu cầu bắt buộc (Use Case tổng quát, Use Case và quy trình hỗ trợ ra quyết định, lưu đồ, cơ sở dữ liệu, mẫu báo cáo, SQL và GUI) nên cần hoàn thành trước. Các bước (5) – (6) là phần AI khuyến khích; OLAP cũng là phần khuyến khích và chỉ nên làm khi phần bắt buộc đã chạy đúng.
