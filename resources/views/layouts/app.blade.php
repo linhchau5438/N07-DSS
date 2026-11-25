@@ -94,6 +94,18 @@
             color: #0F172A;
             font-weight: 600;
         }
+        @media print {
+            #app-sidebar, header, .sidebar-toggle, .no-print, button, #globalFloatingDropdown, #sidebar-backdrop {
+                display: none !important;
+            }
+            .pl-64 {
+                padding-left: 0 !important;
+            }
+            main {
+                padding-top: 0 !important;
+                background: white !important;
+            }
+        }
     </style>
     @stack('styles')
 </head>
