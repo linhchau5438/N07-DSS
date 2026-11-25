@@ -37,73 +37,44 @@
     {{-- ========================================================================= --}}
     <x-ui.section-card spacing="space-y-6">
 
-        {{-- FORM BỘ LỌC DỮ LIỆU BÁO CÁO DÙNG COMPONENT CHUẨN --}}
-        <form method="GET" class="p-4 rounded-xl bg-surface-container-low/60 border border-surface-container-high/60 flex flex-wrap items-end gap-3">
-            @if($showStockStatus ?? false)
-                <div class="w-full sm:w-48">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Trạng thái tồn</label>
-                    <x-ui.filter-select name="stock_status" width="w-full">
+        {{-- TOOLBAR BỘ LỌC DỮ LIỆU BÁO CÁO DÙNG COMPONENT CHUẨN --}}
+        <x-ui.toolbar method="GET">
+            <div class="flex flex-wrap items-center gap-3 w-full">
+                @if($showStockStatus ?? false)
+                    <x-ui.filter-select name="stock_status" width="w-full sm:w-48" :autoSubmit="false">
                         <option value="">Tất cả trạng thái</option>
                         @foreach(['NORMAL'=>'Bình thường','REORDER'=>'Cần xem xét','MISSING_CONFIG'=>'Chưa cấu hình','INSUFFICIENT_DATA'=>'Thiếu dữ liệu','INVALID_DATA'=>'Dữ liệu bất thường'] as $key => $label)
                             <option value="{{ $key }}" @selected(request('stock_status') === $key)>{{ $label }}</option>
                         @endforeach
                     </x-ui.filter-select>
-                </div>
-            @endif
+                @endif
 
-            @if(!$showOlapFilters)
-                <div class="w-full sm:w-36">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Từ ngày</label>
-                    <input type="date" name="from" value="{{ request('from', $from ?? now()->startOfMonth()->toDateString()) }}"
-                           class="w-full h-11 px-3 rounded-xl bg-white border border-surface-container-high text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
-                </div>
-                <div class="w-full sm:w-36">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Đến ngày</label>
-                    <input type="date" name="to" value="{{ request('to', $to ?? now()->toDateString()) }}"
-                           class="w-full h-11 px-3 rounded-xl bg-white border border-surface-container-high text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
-                </div>
-            @else
-                <div class="w-full sm:w-36">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Từ ngày</label>
-                    <input type="date" name="from" value="{{ $from }}"
-                           class="w-full h-11 px-3 rounded-xl bg-white border border-surface-container-high text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
-                </div>
-                <div class="w-full sm:w-36">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Đến ngày</label>
-                    <input type="date" name="to" value="{{ $to }}"
-                           class="w-full h-11 px-3 rounded-xl bg-white border border-surface-container-high text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-primary">
-                </div>
-                <div class="w-full sm:w-44">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Chiều phân tích</label>
-                    <x-ui.filter-select name="dimension" width="w-full">
+                @if(!$showOlapFilters)
+                    <x-ui.filter-date name="from" value="{{ request('from', $from ?? now()->startOfMonth()->toDateString()) }}" width="w-full sm:w-36" />
+                    <x-ui.filter-date name="to" value="{{ request('to', $to ?? now()->toDateString()) }}" width="w-full sm:w-36" />
+                @else
+                    <x-ui.filter-date name="from" value="{{ $from }}" width="w-full sm:w-36" />
+                    <x-ui.filter-date name="to" value="{{ $to }}" width="w-full sm:w-36" />
+                    <x-ui.filter-select name="dimension" width="w-full sm:w-48" :autoSubmit="false">
                         <option value="category" {{ $dimension === 'category' ? 'selected' : '' }}>Danh mục (Roll-up)</option>
                         <option value="product" {{ $dimension === 'product' ? 'selected' : '' }}>Sản phẩm (Drill-down)</option>
                         <option value="month" {{ $dimension === 'month' ? 'selected' : '' }}>Tháng</option>
                     </x-ui.filter-select>
-                </div>
-                <div class="w-full sm:w-40">
-                    <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Slice (Loại GD)</label>
-                    <x-ui.filter-select name="type" width="w-full">
+                    <x-ui.filter-select name="type" width="w-full sm:w-40" :autoSubmit="false">
                         <option value="all" {{ $type === 'all' ? 'selected' : '' }}>Nhập và xuất</option>
                         <option value="import" {{ $type === 'import' ? 'selected' : '' }}>Chỉ nhập</option>
                         <option value="export" {{ $type === 'export' ? 'selected' : '' }}>Chỉ xuất</option>
                     </x-ui.filter-select>
-                </div>
-            @endif
+                @endif
 
-            <div class="w-full sm:w-48">
-                <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Danh mục</label>
-                <x-ui.filter-select name="category_id" width="w-full">
+                <x-ui.filter-select name="category_id" width="w-full sm:w-48" :autoSubmit="false">
                     <option value="">Tất cả danh mục</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
                     @endforeach
                 </x-ui.filter-select>
-            </div>
 
-            <div class="w-full sm:w-56">
-                <label class="block text-[11px] font-bold uppercase tracking-wider font-mono text-on-surface-variant mb-1">Sản phẩm</label>
-                <x-ui.filter-select name="product_id" width="w-full">
+                <x-ui.filter-select name="product_id" width="w-full sm:w-56" :autoSubmit="false">
                     <option value="">Tất cả sản phẩm</option>
                     @foreach($products as $product)
                         <option value="{{ $product->id }}" {{ $productId == $product->id ? 'selected' : '' }}>
@@ -111,12 +82,12 @@
                         </option>
                     @endforeach
                 </x-ui.filter-select>
-            </div>
 
-            <x-ui.button type="submit" variant="primary" icon="filter_alt">
-                Lọc báo cáo
-            </x-ui.button>
-        </form>
+                <x-ui.button type="submit" variant="primary" icon="filter_alt">
+                    Lọc báo cáo
+                </x-ui.button>
+            </div>
+        </x-ui.toolbar>
 
         {{-- BÁO CÁO PHÂN TÍCH NHU CẦU DỰ BÁO (NẾU CÓ) --}}
         @if($isForecastReport ?? false)
@@ -167,23 +138,22 @@
         {{-- BẢNG DỮ LIỆU KẾT QUẢ BÁO CÁO (DÙNG x-ui.data-table) --}}
         <div class="space-y-3">
             <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-secondary"></span>
-                    <h3 class="text-sm font-bold text-on-surface uppercase tracking-wider font-mono">
+                <div class="flex items-center gap-2.5">
+                    <h3 class="text-base font-bold text-on-surface">
                         {{ ($isForecastReport ?? false) ? 'So sánh phương pháp ước tính' : 'Dữ liệu chi tiết' }}
                     </h3>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-surface-container-low text-on-surface-variant border border-surface-container-high">
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-container-low text-on-surface-variant border border-surface-container-high/60">
                         {{ count($rows) }} dòng kết quả
                     </span>
                 </div>
                 @if($showOlapFilters)
-                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800">
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 border border-sky-200">
                         Pivot · So sánh nhập và xuất
                     </span>
                 @endif
             </div>
 
-            <x-ui.data-table minWidth="min-w-[1050px]">
+            <x-ui.data-table minWidth="min-w-[1200px]">
                 <x-slot:header>
                     @foreach($headers as $index => $header)
                         <th class="py-3.5 {{ $index === 0 ? 'pl-6 pr-4' : ($index === count($headers) - 1 ? 'pr-6 pl-4' : 'px-5') }}">
@@ -209,7 +179,7 @@
                                     @endphp
                                     <x-ui.status-pill :variant="$stat[1]" :label="$stat[0]" />
                                 @else
-                                    <span class="tabular-nums {{ is_numeric(str_replace(['.', ',', ' ', 'đ', '%'], '', (string)$cell)) ? 'font-mono' : '' }}">{{ $cell }}</span>
+                                    <span class="tabular-nums font-sans">{{ $cell }}</span>
                                 @endif
                             </td>
                         @endforeach

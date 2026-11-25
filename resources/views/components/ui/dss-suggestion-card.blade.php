@@ -89,24 +89,24 @@
     {{-- THANH CHỈ SỐ CĂN CỨ TÍNH TOÁN NỀN PASTEL --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 p-3.5 rounded-xl bg-surface-container-low/70 border border-surface-container-high/60">
         <div class="flex flex-col">
-            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">Tồn thực tế</span>
-            <span class="text-xs font-bold text-on-surface font-mono mt-0.5">{{ $product->current_on_hand }} {{ $product->unit }}</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Tồn thực tế</span>
+            <span class="text-xs font-bold text-on-surface tabular-nums mt-0.5">{{ $product->current_on_hand }} {{ $product->unit }}</span>
         </div>
         <div class="flex flex-col">
-            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">Đang về</span>
-            <span class="text-xs font-bold text-on-surface font-mono mt-0.5">{{ $product->on_order ?? 0 }} {{ $product->unit }}</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Đang về</span>
+            <span class="text-xs font-bold text-on-surface tabular-nums mt-0.5">{{ $product->on_order ?? 0 }} {{ $product->unit }}</span>
         </div>
         <div class="flex flex-col">
-            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">Vị trí tồn (IP)</span>
-            <span class="text-xs font-bold text-secondary font-mono mt-0.5">{{ $product->inventory_position ?? '—' }}</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Vị trí tồn (IP)</span>
+            <span class="text-xs font-bold text-secondary tabular-nums mt-0.5">{{ $product->inventory_position ?? '—' }}</span>
         </div>
         <div class="flex flex-col">
-            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">Lead Time:</span>
-            <span class="text-xs font-semibold text-on-surface font-mono mt-0.5">{{ $product->lead_time_days }} ngày</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Lead Time:</span>
+            <span class="text-xs font-semibold text-on-surface tabular-nums mt-0.5">{{ $product->lead_time_days }} ngày</span>
         </div>
         <div class="flex flex-col">
-            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">An toàn (SS)</span>
-            <span class="text-xs font-semibold text-on-surface font-mono mt-0.5">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">An toàn (SS)</span>
+            <span class="text-xs font-semibold text-on-surface tabular-nums mt-0.5">
                 {{ $product->safety_stock ?? '—' }}
                 @if($fallbackApplied)
                     <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded ml-0.5">Fallback SS</span>
@@ -114,12 +114,12 @@
             </span>
         </div>
         <div class="flex flex-col">
-            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">Điểm đặt (ROP)</span>
-            <span class="text-xs font-semibold text-on-surface font-mono mt-0.5">{{ $product->reorder_point ?? '—' }}</span>
+            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Điểm đặt (ROP)</span>
+            <span class="text-xs font-semibold text-on-surface tabular-nums mt-0.5">{{ $product->reorder_point ?? '—' }}</span>
         </div>
         <div class="flex flex-col bg-white p-2 rounded-lg border border-surface-container-high/60 shadow-2xs col-span-2 sm:col-span-1">
-            <span class="text-[10px] uppercase font-bold tracking-wider text-[#1A4D38] font-mono">Đề xuất nhập</span>
-            <strong class="text-sm font-bold text-[#1A4D38] font-mono mt-0.5">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-[#1A4D38]">Đề xuất nhập</span>
+            <strong class="text-sm font-bold text-[#1A4D38] tabular-nums mt-0.5">
                 {{ $product->suggested_quantity ?? 0 }} {{ $product->unit }}
             </strong>
         </div>

@@ -34,16 +34,15 @@
     <x-ui.section-card spacing="space-y-6">
         <div class="space-y-3">
             <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-secondary"></span>
-                    <h3 class="text-sm font-bold text-on-surface uppercase tracking-wider font-mono">Danh sách sự kiện kiểm toán</h3>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-surface-container-low text-on-surface-variant border border-surface-container-high">
+                <div class="flex items-center gap-2.5">
+                    <h3 class="text-base font-bold text-on-surface">Danh sách sự kiện kiểm toán</h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-container-low text-on-surface-variant border border-surface-container-high/60">
                         {{ $logs->total() }} sự kiện
                     </span>
                 </div>
             </div>
 
-            <x-ui.data-table minWidth="min-w-[1050px]">
+            <x-ui.data-table minWidth="min-w-[1100px]">
                 <x-slot:head>
                     <th class="py-3.5 pl-6 pr-2 min-w-[90px]">ID</th>
                     <th class="py-3.5 px-5 min-w-[200px]">Hành động nghiệp vụ</th>
@@ -95,7 +94,7 @@
                             </div>
                         </td>
 
-                        <td class="py-4 px-5 font-mono text-xs text-on-surface-variant">
+                        <td class="py-4 px-5 text-sm tabular-nums text-on-surface-variant">
                             {{ \Illuminate\Support\Carbon::parse($log->created_at)->format('d/m/Y H:i:s') }}
                         </td>
 

@@ -302,19 +302,23 @@
     {{-- Header trên cùng đồng bộ chiều cao h-[var(--topbar-h)] (80px) --}}
     <header class="fixed top-0 left-64 right-0 z-40 h-[var(--topbar-h)] bg-surface-container-lowest/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-surface-container-high/60 flex items-center">
         <div class="w-full h-full px-space-lg flex items-center justify-between gap-4">
-            {{-- Ô tìm kiếm & Breadcrumbs căn giữa dọc tâm header --}}
-            <div class="flex items-center gap-3 flex-1 max-w-2xl">
+            {{-- Ô tìm kiếm vị trí/kích thước chuẩn giống /products --}}
+            <div class="flex items-center gap-3 flex-1 max-w-lg">
                 <button type="button" class="icon-button sidebar-toggle" onclick="toggleMenu()" title="Mở menu">
                     <span class="material-symbols-outlined text-[22px]">menu</span>
                 </button>
-                <div class="hidden xl:flex items-center topbar-breadcrumbs whitespace-nowrap shrink-0 pr-2">
-                    <a href="{{ route('dashboard') }}">Kho</a>
-                    @yield('breadcrumbs')
-                </div>
                 <x-ui.search-input id="topbar-search-input"
                                    placeholder="Tìm kiếm sản phẩm, số phiếu, mã SKU..."
                                    class="w-full" />
             </div>
+
+            {{-- Breadcrumbs hiển thị gọn gàng độc lập, không xô lệch ô tìm kiếm --}}
+            @hasSection('breadcrumbs')
+                <div class="hidden 2xl:flex items-center topbar-breadcrumbs whitespace-nowrap text-xs text-on-surface-variant font-medium px-3.5 py-1.5 rounded-full bg-surface-container-low/70 border border-surface-container-high/60">
+                    <a href="{{ route('dashboard') }}" class="hover:text-primary transition-colors">Kho</a>
+                    @yield('breadcrumbs')
+                </div>
+            @endif
 
             {{-- Các nút trạng thái góc phải header --}}
             <div class="flex items-center gap-2 sm:gap-3">

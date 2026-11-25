@@ -44,8 +44,8 @@
         {{-- Thanh lọc thời gian và thông tin đồng bộ --}}
         <div class="flex items-center justify-between border-b border-surface-container-high/60 pb-4 flex-wrap gap-4">
             <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-on-surface flex items-center gap-1.5 uppercase tracking-wider font-mono">
-                    <span class="material-symbols-outlined text-[16px] text-secondary">date_range</span>
+                <span class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px] text-secondary">date_range</span>
                     <span>Kỳ báo cáo</span>
                 </span>
                 <span class="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-white">

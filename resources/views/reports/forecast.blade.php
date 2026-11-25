@@ -254,10 +254,11 @@
 
         {{-- 4. BẢNG DỮ LIỆU LỊCH SỬ CÁC LẦN ĐÁNH GIÁ (DÙNG x-ui.data-table) --}}
         <div class="space-y-3">
-            <h3 class="text-sm font-bold text-on-surface uppercase tracking-wider font-mono flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-secondary"></span>
-                <span>Lịch sử các lần chạy đánh giá mô hình</span>
-            </h3>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <h3 class="text-base font-bold text-on-surface">Lịch sử các lần chạy đánh giá mô hình</h3>
+                </div>
+            </div>
 
             <x-ui.data-table minWidth="min-w-[1100px]">
                 <x-slot:header>
@@ -283,10 +284,10 @@
                             <x-ui.product-cell :name="$run->name"
                                                :sku="$run->product_code" />
                         </td>
-                        <td class="py-5 px-5 font-mono text-[14px] text-on-surface-variant whitespace-nowrap">
+                        <td class="py-5 px-5 text-[14px] text-on-surface-variant whitespace-nowrap">
                             {{ $run->period_start }} → {{ $run->period_end }}
                         </td>
-                        <td class="py-5 px-5 text-center font-mono text-[15px] font-semibold whitespace-nowrap">
+                        <td class="py-5 px-5 text-center text-[15px] font-semibold whitespace-nowrap">
                             {{ $run->ma_days }} ngày
                         </td>
                         <td class="py-5 px-5 text-center whitespace-nowrap">
@@ -296,16 +297,16 @@
                                 <x-ui.status-pill variant="neutral" label="Moving Average" />
                             @endif
                         </td>
-                        <td class="py-5 px-5 text-right font-mono text-[15px] tabular-nums whitespace-nowrap">
+                        <td class="py-5 px-5 text-right text-[15px] tabular-nums whitespace-nowrap">
                             {{ number_format($metrics['mae'], 4) }}
                         </td>
-                        <td class="py-5 px-5 text-right font-mono text-[15px] tabular-nums whitespace-nowrap">
+                        <td class="py-5 px-5 text-right text-[15px] tabular-nums whitespace-nowrap">
                             {{ number_format($metrics['rmse'], 4) }}
                         </td>
-                        <td class="py-5 px-5 text-right font-mono text-[15px] font-bold text-primary tabular-nums whitespace-nowrap">
+                        <td class="py-5 px-5 text-right text-[15px] font-bold text-primary tabular-nums whitespace-nowrap">
                             {{ number_format($metrics['forecast'], 2) }} <span class="text-xs font-normal text-on-surface-variant">{{ $run->unit }}</span>
                         </td>
-                        <td class="py-5 pr-6 pl-4 text-right font-mono text-[14px] text-on-surface-variant whitespace-nowrap">
+                        <td class="py-5 pr-6 pl-4 text-right text-[14px] text-on-surface-variant whitespace-nowrap">
                             {{ \Illuminate\Support\Carbon::parse($run->created_at)->format('H:i d/m/Y') }}
                         </td>
                     </tr>

@@ -167,7 +167,7 @@
                         <a href="{{ route('products.index', ['category_id' => $category->id]) }}"
                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors {{ $category->products_count > 0 ? 'bg-emerald-100 text-emerald-900 border border-emerald-200 hover:bg-emerald-200' : 'bg-surface-container text-on-surface-variant' }}"
                            title="Xem các sản phẩm thuộc danh mục này">
-                            <span class="tabular-nums font-bold font-mono">{{ $category->products_count }}</span>
+                            <span class="tabular-nums font-bold">{{ $category->products_count }}</span>
                             <span>mặt hàng</span>
                             <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
                         </a>

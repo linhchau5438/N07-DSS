@@ -63,8 +63,8 @@
             {{-- Cột phải: Tình trạng tồn kho --}}
             <div class="bg-surface-container-low/40 rounded-2xl p-6 border border-surface-container-high/60 space-y-4 flex flex-col justify-between">
                 <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-on-surface mb-3 flex items-center gap-2 font-mono">
-                        <span class="material-symbols-outlined text-[18px] text-secondary">warehouse</span>
+                    <h3 class="text-base font-bold text-on-surface mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[20px] text-secondary">warehouse</span>
                         <span>Tình trạng tồn kho</span>
                     </h3>
                     <div class="grid grid-cols-2 gap-3 text-xs">

@@ -164,10 +164,10 @@
                                 <span class="font-bold text-sm text-on-surface block">{{ $item->name }}</span>
                                 <span class="font-mono text-xs text-on-surface-variant">{{ $item->product_code }} · {{ $item->unit }}</span>
                             </td>
-                            <td class="py-4 px-4 text-right font-mono text-sm text-on-surface-variant">
+                            <td class="py-4 px-4 text-right tabular-nums font-medium text-sm text-on-surface-variant">
                                 {{ number_format($item->suggested_quantity) }} {{ $item->unit }}
                             </td>
-                            <td class="py-4 px-4 text-right font-mono font-bold text-sm text-secondary">
+                            <td class="py-4 px-4 text-right tabular-nums font-bold text-sm text-secondary">
                                 {{ number_format($item->approved_quantity) }} {{ $item->unit }}
                             </td>
                             <td class="py-4 px-4 text-xs text-on-surface-variant">
@@ -246,7 +246,7 @@
                                 <x-ui.status-pill variant="info" :label="$order->status === 'partially_received' ? 'Đã nhận 1 phần' : 'Đang về'" />
                             </div>
 
-                            <div class="p-3 rounded-xl bg-surface-container-low/70 border border-surface-container-high/60 grid grid-cols-3 gap-2 text-xs font-mono">
+                            <div class="p-3 rounded-xl bg-surface-container-low/70 border border-surface-container-high/60 grid grid-cols-3 gap-2 text-xs tabular-nums font-sans">
                                 <div>
                                     <span class="text-[10px] text-on-surface-variant block uppercase">Đã đặt</span>
                                     <strong class="text-sm font-bold">{{ $order->ordered_quantity }} {{ $order->unit }}</strong>

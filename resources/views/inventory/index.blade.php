@@ -225,11 +225,11 @@
                                 {{ $product->category_name }}
                             </td>
 
-                            <td class="py-5 px-5 text-right whitespace-nowrap font-mono font-bold text-[15px] {{ $product->on_hand <= 0 ? 'text-error' : 'text-on-surface' }}">
+                            <td class="py-5 px-5 text-right whitespace-nowrap tabular-nums font-semibold text-[15px] {{ $product->on_hand <= 0 ? 'text-error' : 'text-on-surface' }}">
                                 {{ number_format($product->on_hand) }} {{ $product->unit }}
                             </td>
 
-                            <td class="py-5 px-5 text-right whitespace-nowrap font-mono text-[15px]">
+                            <td class="py-5 px-5 text-right whitespace-nowrap tabular-nums text-[15px]">
                                 @if(($product->on_order ?? 0) > 0)
                                     <span class="inline-flex items-center gap-1 text-secondary font-bold" title="Hàng nhà cung cấp đang giao">
                                         <span class="material-symbols-outlined text-[14px]">local_shipping</span>
@@ -240,11 +240,11 @@
                                 @endif
                             </td>
 
-                            <td class="py-5 px-5 text-right whitespace-nowrap font-mono font-bold text-[15px] text-secondary">
+                            <td class="py-5 px-5 text-right whitespace-nowrap tabular-nums font-semibold text-[15px] text-secondary">
                                 {{ number_format($product->inventory_position ?? $product->on_hand) }}
                             </td>
 
-                            <td class="py-5 px-5 text-right whitespace-nowrap font-mono font-medium text-[15px] text-on-surface">
+                            <td class="py-5 px-5 text-right whitespace-nowrap tabular-nums font-medium text-[15px] text-on-surface">
                                 {{ $product->reorder_point !== null ? number_format($product->reorder_point, 1) : '—' }}
                             </td>
 

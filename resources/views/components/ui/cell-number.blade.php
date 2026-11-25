@@ -5,7 +5,7 @@
     'highlight' => false,
 ])
 <td {{ $attributes->merge(['class' => 'py-5 px-5 text-right whitespace-nowrap']) }}>
-    <span class="text-[15px] tabular-nums font-mono {{ $highlight ? 'font-bold text-primary' : 'font-medium text-on-surface' }}">
+    <span class="text-[15px] tabular-nums font-sans {{ $highlight ? 'font-bold text-primary' : 'font-medium text-on-surface' }}">
         {{ is_numeric($value) ? number_format($value) : $value }}
     </span>
     @if($unit)

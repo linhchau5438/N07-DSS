@@ -36,25 +36,24 @@
     <x-ui.section-card spacing="space-y-6">
         <div class="space-y-3">
             <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-secondary"></span>
-                    <h3 class="text-sm font-bold text-on-surface uppercase tracking-wider font-mono">Danh sách bản ghi quyết định</h3>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-surface-container-low text-on-surface-variant border border-surface-container-high">
+                <div class="flex items-center gap-2.5">
+                    <h3 class="text-base font-bold text-on-surface">Danh sách bản ghi quyết định</h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-container-low text-on-surface-variant border border-surface-container-high/60">
                         {{ $records->total() }} bản ghi
                     </span>
                 </div>
             </div>
 
-            <x-ui.data-table minWidth="min-w-[1100px]">
+            <x-ui.data-table minWidth="min-w-[1250px]">
                 <x-slot:head>
-                    <th class="py-3.5 pl-6 pr-2 min-w-[100px]">Mã / Ngày</th>
-                    <th class="py-3.5 px-5 min-w-[220px]">Sản phẩm & SKU</th>
-                    <th class="py-3.5 px-5 text-center min-w-[140px]">Trạng thái</th>
+                    <th class="py-3.5 pl-6 pr-2 min-w-[110px]">Mã / Ngày</th>
+                    <th class="py-3.5 px-5 min-w-[240px]">Sản phẩm & SKU</th>
+                    <th class="py-3.5 px-5 text-center min-w-[150px]">Trạng thái</th>
                     <th class="py-3.5 px-5 text-right min-w-[110px]">Đề xuất (Q)</th>
                     <th class="py-3.5 px-5 text-right min-w-[110px]">Admin duyệt</th>
                     <th class="py-3.5 px-5 text-right min-w-[110px]">Đặt thực tế</th>
                     <th class="py-3.5 px-5 text-right min-w-[110px]">Đã nhận kho</th>
-                    <th class="py-3.5 px-5 min-w-[180px]">Người duyệt & Ghi chú</th>
+                    <th class="py-3.5 px-5 min-w-[220px]">Người duyệt & Ghi chú</th>
                     <th class="py-3.5 pr-6 pl-2 text-center min-w-[120px]">Căn cứ</th>
                 </x-slot:head>
 
@@ -89,25 +88,25 @@
                             <x-ui.status-pill :variant="$statusBadge[0]" :label="$statusBadge[1]" />
                         </td>
 
-                        <td class="py-4 px-5 text-right font-mono font-bold text-sm text-on-surface">
+                        <td class="py-4 px-5 text-right tabular-nums font-semibold text-[15px] text-on-surface">
                             {{ number_format($rec->suggested_quantity) }}
                         </td>
 
-                        <td class="py-4 px-5 text-right font-mono font-bold text-sm text-secondary">
+                        <td class="py-4 px-5 text-right tabular-nums font-semibold text-[15px] text-secondary">
                             {{ $rec->approved_quantity !== null ? number_format($rec->approved_quantity) : '—' }}
                         </td>
 
-                        <td class="py-4 px-5 text-right font-mono text-sm text-on-surface-variant">
+                        <td class="py-4 px-5 text-right tabular-nums font-medium text-[15px] text-on-surface-variant">
                             {{ $rec->ordered_quantity !== null ? number_format($rec->ordered_quantity) : '—' }}
                         </td>
 
-                        <td class="py-4 px-5 text-right font-mono font-bold text-sm text-emerald-700">
+                        <td class="py-4 px-5 text-right tabular-nums font-semibold text-[15px] text-emerald-700">
                             {{ number_format($rec->received_quantity ?? 0) }}
                         </td>
 
                         <td class="py-4 px-5 text-xs text-on-surface-variant">
                             <span class="font-bold text-on-surface block">{{ $rec->reviewer ?? 'Tự động' }}</span>
-                            <span>{{ $rec->decision_note ?: ($rec->order_note ?: '—') }}</span>
+                            <span class="line-clamp-2">{{ $rec->decision_note ?: ($rec->order_note ?: '—') }}</span>
                         </td>
 
                         <td class="py-4 pr-6 pl-2 text-center">
