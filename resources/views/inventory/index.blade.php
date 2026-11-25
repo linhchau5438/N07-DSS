@@ -226,7 +226,7 @@
                             </td>
 
                             <td class="py-5 px-5 text-right whitespace-nowrap font-mono font-bold text-[15px] {{ $product->on_hand <= 0 ? 'text-error' : 'text-on-surface' }}">
-                                {{ number_format($product->on_hand) }} <span class="text-xs font-normal text-on-surface-variant font-sans">{{ $product->unit }}</span>
+                                {{ number_format($product->on_hand) }} {{ $product->unit }}
                             </td>
 
                             <td class="py-5 px-5 text-right whitespace-nowrap font-mono text-[15px]">

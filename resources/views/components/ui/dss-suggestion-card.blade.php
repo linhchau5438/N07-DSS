@@ -22,6 +22,11 @@
     $statusKey = $product->recommendation_status ?? 'no_action';
     $statusInfo = $labels[$statusKey] ?? [$statusKey, 'neutral'];
     $isPending = $statusKey === 'pending' && ($product->suggested_quantity ?? 0) > 0;
+
+    $snapshot = json_decode($product->calculation_snapshot ?? '{}', true) ?: [];
+    $stockout = $snapshot['stockout_analysis'] ?? [];
+    $actualLt = $snapshot['actual_lead_time'] ?? [];
+    $fallbackApplied = !empty($snapshot['safety_fallback_applied']);
 @endphp
 
 <article class="p-6 rounded-2xl bg-surface-container-lowest border {{ $isPending ? 'border-amber-400/80 shadow-md ring-1 ring-amber-400/20' : 'border-surface-container-high/60 shadow-sm' }} space-y-4 hover:border-surface-container-highest transition-all">
@@ -47,13 +52,42 @@
             </div>
         </div>
 
-        <div>
+        <div class="flex items-center gap-2 flex-wrap">
+            @if($fallbackApplied)
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300" title="Kích hoạt đệm an toàn cơ sở do phương sai xấp xỉ 0">
+                    🛡️ Fallback SS
+                </span>
+            @endif
+            @if(!empty($stockout['is_censored']))
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-orange-100 text-orange-800 border border-orange-300" title="Phát hiện giai đoạn đứt hàng làm méo nhu cầu">
+                    ⚠️ Censored Demand
+                </span>
+            @endif
             <x-ui.status-pill :variant="$statusInfo[1]" :label="$statusInfo[0]" />
         </div>
     </div>
 
+    {{-- CẢNH BÁO MÉO NHU CẦU NẾU CÓ --}}
+    @if(!empty($stockout['is_censored']))
+        <div class="p-4 rounded-xl bg-orange-50/80 border border-orange-200 border-l-4 border-l-orange-500 text-orange-950 text-xs space-y-1.5">
+            <div class="font-bold flex items-center gap-1.5 text-orange-900 text-[13px]">
+                <span class="material-symbols-outlined text-[18px] text-orange-600">warning</span>
+                <span>Cảnh báo méo nhu cầu (Censored Demand)</span>
+            </div>
+            <div class="text-orange-900">
+                Sản phẩm hết hàng <strong>{{ $stockout['stockout_days'] ?? 0 }}/{{ $stockout['total_days'] ?? 0 }} ngày</strong> ({{ round(($stockout['stockout_ratio'] ?? 0) * 100, 1) }}%).
+                Nhu cầu thực tế khi có hàng là <strong>{{ $stockout['adjusted_demand'] ?? 0 }} {{ $product->unit }}/ngày</strong> (cao hơn mức ghi nhận {{ $product->average_daily_demand }} {{ $product->unit }}/ngày).
+            </div>
+            @if(!empty($snapshot['adjusted_calculation']['quantity']) && (int)$snapshot['adjusted_calculation']['quantity'] > 0)
+                <div class="mt-2 pt-2 border-t border-orange-200/80 flex items-center justify-between flex-wrap gap-2">
+                    <span>💡 Đề xuất hiệu chỉnh bù đắp: <strong>{{ $snapshot['adjusted_calculation']['quantity'] }} {{ $product->unit }}</strong></span>
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- THANH CHỈ SỐ CĂN CỨ TÍNH TOÁN NỀN PASTEL --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 p-3.5 rounded-xl bg-surface-container-low/70 border border-surface-container-high/60">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 p-3.5 rounded-xl bg-surface-container-low/70 border border-surface-container-high/60">
         <div class="flex flex-col">
             <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">Tồn thực tế</span>
             <span class="text-xs font-bold text-on-surface font-mono mt-0.5">{{ $product->current_on_hand }} {{ $product->unit }}</span>
@@ -67,14 +101,23 @@
             <span class="text-xs font-bold text-secondary font-mono mt-0.5">{{ $product->inventory_position ?? '—' }}</span>
         </div>
         <div class="flex flex-col">
+            <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">Lead Time:</span>
+            <span class="text-xs font-semibold text-on-surface font-mono mt-0.5">{{ $product->lead_time_days }} ngày</span>
+        </div>
+        <div class="flex flex-col">
             <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">An toàn (SS)</span>
-            <span class="text-xs font-semibold text-on-surface font-mono mt-0.5">{{ $product->safety_stock ?? '—' }}</span>
+            <span class="text-xs font-semibold text-on-surface font-mono mt-0.5">
+                {{ $product->safety_stock ?? '—' }}
+                @if($fallbackApplied)
+                    <span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded ml-0.5">Fallback SS</span>
+                @endif
+            </span>
         </div>
         <div class="flex flex-col">
             <span class="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant font-mono">Điểm đặt (ROP)</span>
             <span class="text-xs font-semibold text-on-surface font-mono mt-0.5">{{ $product->reorder_point ?? '—' }}</span>
         </div>
-        <div class="flex flex-col bg-white p-2 rounded-lg border border-surface-container-high/60 shadow-2xs">
+        <div class="flex flex-col bg-white p-2 rounded-lg border border-surface-container-high/60 shadow-2xs col-span-2 sm:col-span-1">
             <span class="text-[10px] uppercase font-bold tracking-wider text-[#1A4D38] font-mono">Đề xuất nhập</span>
             <strong class="text-sm font-bold text-[#1A4D38] font-mono mt-0.5">
                 {{ $product->suggested_quantity ?? 0 }} {{ $product->unit }}

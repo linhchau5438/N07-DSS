@@ -71,6 +71,29 @@
             -moz-appearance: none !important;
             appearance: none !important;
         }
+        .topbar-breadcrumbs {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.8125rem;
+            color: #64748B;
+        }
+        .topbar-breadcrumbs a {
+            color: #475569;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .topbar-breadcrumbs a:hover {
+            color: #1A4D38;
+        }
+        .topbar-breadcrumbs .sep {
+            color: #94A3B8;
+            user-select: none;
+        }
+        .topbar-breadcrumbs .current {
+            color: #0F172A;
+            font-weight: 600;
+        }
     </style>
     @stack('styles')
 </head>
@@ -129,7 +152,7 @@
             <a href="{{ route('dashboard') }}"
                class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('dashboard') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                 <span class="material-symbols-outlined text-[20px]">grid_view</span>
-                <span>Dashboard</span>
+                <span>Tổng quan kho</span>
             </a>
         </div>
 
@@ -150,74 +173,79 @@
             @endif
         </div>
 
-        {{-- Nhóm 3: Quản lý kho --}}
+        {{-- Nhóm 3: Nghiệp vụ kho --}}
         <div class="space-y-1">
-            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Quản lý kho</div>
+            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Nghiệp vụ kho</div>
             <a href="{{ route('inventory.create', 'import') }}"
                class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('inventory.create') && request()->route('type') === 'import' ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                 <span class="material-symbols-outlined text-[20px]">move_to_inbox</span>
-                <span>Nhập kho</span>
+                <span>Phiếu nhập kho</span>
             </a>
             <a href="{{ route('inventory.create', 'export') }}"
                class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('inventory.create') && request()->route('type') === 'export' ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                 <span class="material-symbols-outlined text-[20px]">unarchive</span>
-                <span>Xuất kho</span>
+                <span>Phiếu xuất kho</span>
             </a>
             <a href="{{ route('inventory.index') }}"
                class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('inventory.index') && request('stock') !== 'attention' ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                 <span class="material-symbols-outlined text-[20px]">warehouse</span>
-                <span>Tra cứu tồn kho & Sổ kho</span>
+                <span>Tra cứu tồn kho</span>
             </a>
         </div>
 
-        {{-- Nhóm 4: Ra quyết định DSS --}}
+        {{-- Nhóm 4: Hỗ trợ nhập hàng --}}
         <div class="space-y-1">
-            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Hệ thống DSS</div>
+            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Hỗ trợ nhập hàng</div>
             <a href="{{ route('dss.index') }}"
                class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('dss.index') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                 <span class="material-symbols-outlined text-[20px] text-secondary">assignment_turned_in</span>
-                <span class="font-semibold text-secondary">Đề xuất bổ sung (DSS)</span>
+                <span class="font-semibold text-secondary">Đề xuất bổ sung hàng</span>
             </a>
             <a href="{{ route('dss.history') }}"
                class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('dss.history') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                 <span class="material-symbols-outlined text-[20px]">manage_history</span>
-                <span>Lịch sử quyết định DSS</span>
+                <span>Lịch sử đặt & nhận hàng</span>
+            </a>
+        </div>
+
+        {{-- Nhóm 5: Báo cáo & Phân tích --}}
+        <div class="space-y-1">
+            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Báo cáo & Phân tích</div>
+            <a href="{{ route('reports.index') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('reports.index') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">analytics</span>
+                <span>Trung tâm báo cáo</span>
             </a>
             <a href="{{ route('reports.bc05') }}"
                class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('reports.bc05') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                 <span class="material-symbols-outlined text-[20px]">trending_up</span>
-                <span>Nhu cầu & Dự báo</span>
+                <span>Dự báo nhu cầu</span>
             </a>
-        </div>
-
-        {{-- Nhóm 5: Phân tích & Báo cáo --}}
-        <div class="space-y-1">
-            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Báo cáo & Cảnh báo</div>
-            <a href="{{ route('reports.index') }}"
-               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('reports.*') && !request()->routeIs('reports.bc05') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
-                <span class="material-symbols-outlined text-[20px]">analytics</span>
-                <span>Trung tâm Báo cáo (7 BC)</span>
-            </a>
-            <a href="{{ route('inventory.index', ['stock' => 'attention']) }}"
-               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('inventory.index') && request('stock') === 'attention' ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+            <a href="{{ route('reports.bc04') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('reports.bc04') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                 <span class="material-symbols-outlined text-[20px]">warning</span>
-                <span>Cảnh báo tồn kho</span>
+                <span>Rủi ro tồn & chậm luân chuyển</span>
+            </a>
+            <a href="{{ route('reports.olap') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('reports.olap') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">insights</span>
+                <span>Phân tích kho đa chiều</span>
             </a>
         </div>
 
-        {{-- Nhóm 6: Hệ thống (Chỉ Admin) --}}
+        {{-- Nhóm 6: Quản trị hệ thống (Chỉ Admin) --}}
         @if(auth()->user()->role === 'admin')
             <div class="space-y-1">
-                <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Hệ thống</div>
+                <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Quản trị hệ thống</div>
                 <a href="{{ route('users.index') }}"
                    class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('users.*') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                     <span class="material-symbols-outlined text-[20px]">manage_accounts</span>
-                    <span>Quản lý tài khoản</span>
+                    <span>Quản lý người dùng</span>
                 </a>
                 <a href="{{ route('audit.index') }}"
                    class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('audit.*') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
                     <span class="material-symbols-outlined text-[20px]">security</span>
-                    <span>Nhật ký kiểm toán</span>
+                    <span>Nhật ký hoạt động</span>
                 </a>
             </div>
         @endif
@@ -262,11 +290,15 @@
     {{-- Header trên cùng đồng bộ chiều cao h-[var(--topbar-h)] (80px) --}}
     <header class="fixed top-0 left-64 right-0 z-40 h-[var(--topbar-h)] bg-surface-container-lowest/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-surface-container-high/60 flex items-center">
         <div class="w-full h-full px-space-lg flex items-center justify-between gap-4">
-            {{-- Ô tìm kiếm căn giữa dọc tâm header --}}
-            <div class="flex items-center gap-3 flex-1 max-w-lg">
+            {{-- Ô tìm kiếm & Breadcrumbs căn giữa dọc tâm header --}}
+            <div class="flex items-center gap-3 flex-1 max-w-2xl">
                 <button type="button" class="icon-button sidebar-toggle" onclick="toggleMenu()" title="Mở menu">
                     <span class="material-symbols-outlined text-[22px]">menu</span>
                 </button>
+                <div class="hidden xl:flex items-center topbar-breadcrumbs whitespace-nowrap shrink-0 pr-2">
+                    <a href="{{ route('dashboard') }}">Kho</a>
+                    @yield('breadcrumbs')
+                </div>
                 <x-ui.search-input id="topbar-search-input"
                                    placeholder="Tìm kiếm sản phẩm, số phiếu, mã SKU..."
                                    class="w-full" />
