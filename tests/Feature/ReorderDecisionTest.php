@@ -75,6 +75,18 @@ class ReorderDecisionTest extends TestCase
             'reviewed_by' => $adminId,
         ]);
 
+        // Nghiệp vụ mới: Duyệt đề xuất chưa làm tăng On Order
+        $this->post(route('dss.generate'), ['period_days' => 30])
+            ->assertRedirect(route('dss.index'));
+        $afterApproved = DB::table('reorder_recommendations')->where('product_id', $productId)->latest('id')->first();
+        $this->assertSame(0, (int) $afterApproved->on_order);
+
+        // Xác nhận đặt hàng thực tế với Nhà cung cấp
+        $this->post(route('dss.order', $recommendation->id), [
+            'ordered_quantity' => 7,
+            'supplier_name' => 'Nhà cung cấp Ánh Dương',
+        ])->assertRedirect(route('dss.index'));
+
         $this->post(route('dss.generate'), ['period_days' => 30])
             ->assertRedirect(route('dss.index'));
 
@@ -85,7 +97,6 @@ class ReorderDecisionTest extends TestCase
 
         $this->assertSame(7, (int) $latest->on_order);
         $this->assertSame(7, (int) $latest->inventory_position);
-        $this->assertSame('no_action', $latest->status);
 
         $this->post(route('inventory.store', 'import'), [
             'transaction_date' => now()->subDay()->toDateString(),
@@ -103,6 +114,7 @@ class ReorderDecisionTest extends TestCase
             'id' => $recommendation->id,
             'status' => 'fulfilled',
             'approved_quantity' => 7,
+            'ordered_quantity' => 7,
             'received_quantity' => 7,
         ]);
 

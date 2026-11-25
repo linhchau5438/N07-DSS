@@ -29,6 +29,10 @@ class InventoryTest extends TestCase
             'total_value' => 250000,
         ]);
 
+        $transactionId = DB::table('inventory_transactions')->value('id');
+        $this->get(route('inventory.show', $transactionId))->assertOk()->assertSee('25');
+        $this->get(route('products.show', $productId))->assertOk()->assertSee(route('inventory.show', $transactionId));
+
         $this->get(route('inventory.index'))
             ->assertOk()
             ->assertSee('25')

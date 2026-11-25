@@ -81,7 +81,14 @@ Route::middleware(['auth', EnsureAccountIsActive::class])->group(function () {
     Route::get('/reports/olap', [ReportController::class, 'olap'])
         ->name('reports.olap');
 
+    Route::post('/dss/recommendations/{id}/order', [ReorderController::class, 'confirmOrder'])
+        ->whereNumber('id')
+        ->name('dss.order');
+
     Route::middleware('role:admin')->group(function () {
+        Route::post('/dss/recommendations/{id}/cancel', [ReorderController::class, 'cancel'])
+            ->whereNumber('id')
+            ->name('dss.cancel');
         Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
         Route::put('/inventory/transactions/{id}/purpose', [InventoryController::class, 'reviewPurpose'])->name('inventory.purpose');
         Route::post('/forecasts/run', [ForecastController::class, 'store'])->name('forecast.run');
@@ -152,6 +159,10 @@ Route::middleware(['auth', EnsureAccountIsActive::class])->group(function () {
         Route::put('/dss/settings/{productId}', [ReorderController::class, 'updateSettings'])
             ->whereNumber('productId')
             ->name('dss.settings');
+
+        Route::post('/dss/products/{id}/sync-lead-time', [ReorderController::class, 'syncLeadTime'])
+            ->whereNumber('id')
+            ->name('dss.sync-lead-time');
 
         Route::post('/dss/recommendations/{id}/decision', [ReorderController::class, 'decide'])
             ->whereNumber('id')

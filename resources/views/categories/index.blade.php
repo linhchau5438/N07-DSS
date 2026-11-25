@@ -1,54 +1,82 @@
 @extends('layouts.app')
 
-@section('title', 'Danh mục')
-@section('page-title', 'Danh mục sản phẩm')
-@section('page-subtitle', 'Sắp xếp mặt hàng theo nhóm để quản lý dễ dàng hơn.')
+@section('title', 'Danh mục hàng hóa')
+
+@section('breadcrumbs')
+    <span class="sep">/</span>
+    <a href="{{ route('products.index') }}">Sản phẩm</a>
+    <span class="sep">/</span>
+    <span class="current">Danh mục</span>
+@endsection
 
 @section('content')
-    <div class="page-heading">
-        <div>
-            <h2>Các nhóm hàng</h2>
-            <p>{{ $categories->count() }} danh mục đang được sử dụng</p>
-        </div>
-        <a href="{{ route('categories.create') }}" class="btn">＋ Thêm danh mục</a>
+<div class="page-heading">
+    <div>
+        <h2>Danh mục phân loại hàng hóa</h2>
+        <p>Phân nhóm các mặt hàng theo tính chất sản phẩm để quản lý tồn kho và báo cáo đa chiều.</p>
     </div>
+    @if(auth()->user()->role === 'admin')
+        <a href="{{ route('categories.create') }}" class="btn">
+            ＋ Thêm danh mục mới
+        </a>
+    @endif
+</div>
 
-    <section class="content">
-        <div class="table-wrap">
-            <table>
-                <thead>
+<div class="card" style="padding:0;overflow:hidden;max-width:960px">
+    <div class="table-wrap" style="border:none">
+        <table>
+            <thead>
                 <tr>
-                    <th>#</th>
+                    <th style="width:60px" class="text-center">#</th>
                     <th>Tên danh mục</th>
                     <th>Mô tả</th>
-                    <th>Sản phẩm</th>
-                    <th>Thao tác</th>
+                    <th class="text-center">Số lượng mặt hàng</th>
+                    <th class="text-right">Thao tác</th>
                 </tr>
-                </thead>
-                <tbody>
+            </thead>
+            <tbody>
                 @forelse($categories as $index => $category)
                     <tr>
-                        <td class="text-muted">{{ str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) }}</td>
-                        <td><strong>{{ $category->name }}</strong></td>
-                        <td class="text-muted">{{ $category->description ?: 'Chưa có mô tả' }}</td>
-                        <td><span class="badge {{ $category->products_count ? 'badge-info' : 'badge-muted' }}">{{ $category->products_count }} mặt hàng</span></td>
+                        <td class="text-center text-muted">{{ $index + 1 }}</td>
                         <td>
-                            <div class="table-actions">
-                                <a href="{{ route('categories.edit', $category->id) }}" class="btn btn-secondary btn-sm">Sửa</a>
-                                <form action="{{ route('categories.destroy', $category->id) }}" method="POST"
-                                      onsubmit="return confirm('Bạn có chắc muốn xóa danh mục này?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger btn-sm">Xóa</button>
-                                </form>
+                            <strong style="color:var(--text-main);font-size:13px">{{ $category->name }}</strong>
+                        </td>
+                        <td class="text-muted">{{ $category->description ?: 'Chưa có mô tả' }}</td>
+                        <td class="text-center">
+                            <span class="badge {{ $category->products_count > 0 ? 'badge-info' : 'badge-muted' }}">
+                                {{ $category->products_count }} sản phẩm
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <div style="display:inline-flex;gap:4px">
+                                <a href="{{ route('categories.edit', $category->id) }}" class="btn btn-sm btn-secondary">
+                                    Sửa
+                                </a>
+                                @if(auth()->user()->role === 'admin')
+                                    <form action="{{ route('categories.destroy', $category->id) }}" method="POST"
+                                          onsubmit="return confirm('Bạn có chắc chắn muốn xóa danh mục này? Chỉ có thể xóa nếu không còn sản phẩm thuộc nhóm này.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            Xóa
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td class="empty-state" colspan="5">Chưa có danh mục. Hãy tạo danh mục đầu tiên.</td></tr>
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <span class="empty-icon">📁</span>
+                            <div class="empty-title">Chưa có danh mục nào</div>
+                            <p class="empty-desc">Tạo nhóm hàng đầu tiên để phân loại sản phẩm.</p>
+                            <a href="{{ route('categories.create') }}" class="btn btn-sm">＋ Thêm danh mục mới</a>
+                        </td>
+                    </tr>
                 @endforelse
-                </tbody>
-            </table>
-        </div>
-    </section>
+            </tbody>
+        </table>
+    </div>
+</div>
 @endsection

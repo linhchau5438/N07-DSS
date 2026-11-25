@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'N07 Inventory Management') | N07 Inventory</title>
+    <title>@yield('title', 'Quản lý kho & Hỗ trợ nhập hàng') | N07 DSS</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     @stack('styles')
 </head>
@@ -28,100 +28,106 @@
     <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
     <symbol id="icon-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12h4"/></symbol>
     <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="icon-audit" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></symbol>
 </svg>
 
 <div class="app-shell">
     <aside class="sidebar" id="app-sidebar" aria-label="Điều hướng hệ thống">
-        <a class="brand" href="{{ route('dashboard') }}" aria-label="N07 Inventory Management - Tổng quan">
+        <a class="brand" href="{{ route('dashboard') }}" title="N07 Inventory System">
             <span class="brand-mark">N7</span>
             <span class="brand-copy">
-                <span class="brand-name">N07 INVENTORY</span>
-                <span class="brand-caption">MANAGEMENT SYSTEM</span>
+                <span class="brand-name">N07 WAREHOUSE</span>
+                <span class="brand-caption">REPLENISHMENT DSS</span>
             </span>
         </a>
 
         <nav class="sidebar-nav" aria-label="Điều hướng chính">
+            <!-- 1. Tổng quan -->
             <div class="nav-group">
                 <div class="nav-label">Tổng quan</div>
-                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}" title="Dashboard">
-                    <svg class="nav-icon"><use href="#icon-dashboard"/></svg><span class="nav-text">Dashboard</span>
+                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
+                    <svg class="nav-icon"><use href="#icon-dashboard"/></svg>
+                    <span class="nav-text">Tổng quan kho</span>
                 </a>
             </div>
 
+            <!-- 2. Quản lý hàng hóa -->
             <div class="nav-group">
                 <div class="nav-label">Quản lý hàng hóa</div>
-                <a class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}" href="{{ route('products.index') }}" title="Danh sách sản phẩm">
-                    <svg class="nav-icon"><use href="#icon-product"/></svg><span class="nav-text">Danh sách sản phẩm</span>
+                <a class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}" href="{{ route('products.index') }}">
+                    <svg class="nav-icon"><use href="#icon-product"/></svg>
+                    <span class="nav-text">Danh sách sản phẩm</span>
                 </a>
                 @if(auth()->user()->role === 'admin')
-                    <a class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}" href="{{ route('categories.index') }}" title="Danh mục hàng hóa">
-                        <svg class="nav-icon"><use href="#icon-category"/></svg><span class="nav-text">Danh mục hàng hóa</span>
+                    <a class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}" href="{{ route('categories.index') }}">
+                        <svg class="nav-icon"><use href="#icon-category"/></svg>
+                        <span class="nav-text">Danh mục hàng hóa</span>
                     </a>
                 @endif
             </div>
 
+            <!-- 3. Nghiệp vụ kho -->
             <div class="nav-group">
-                <div class="nav-label">Quản lý kho</div>
-                <a class="nav-link {{ request()->routeIs('inventory.create') && request()->route('type') === 'import' ? 'active' : '' }}" href="{{ route('inventory.create', 'import') }}" title="Nhập kho">
-                    <svg class="nav-icon"><use href="#icon-import"/></svg><span class="nav-text">Nhập kho</span>
+                <div class="nav-label">Nghiệp vụ kho</div>
+                <a class="nav-link {{ request()->routeIs('inventory.create') && request()->route('type') === 'import' ? 'active' : '' }}" href="{{ route('inventory.create', 'import') }}">
+                    <svg class="nav-icon"><use href="#icon-import"/></svg>
+                    <span class="nav-text">Phiếu nhập kho</span>
                 </a>
-                <a class="nav-link {{ request()->routeIs('inventory.create') && request()->route('type') === 'export' ? 'active' : '' }}" href="{{ route('inventory.create', 'export') }}" title="Xuất kho">
-                    <svg class="nav-icon"><use href="#icon-export"/></svg><span class="nav-text">Xuất kho</span>
+                <a class="nav-link {{ request()->routeIs('inventory.create') && request()->route('type') === 'export' ? 'active' : '' }}" href="{{ route('inventory.create', 'export') }}">
+                    <svg class="nav-icon"><use href="#icon-export"/></svg>
+                    <span class="nav-text">Phiếu xuất kho</span>
                 </a>
-                <a class="nav-link {{ request()->routeIs('inventory.index') && !request('stock') ? 'active' : '' }}" href="{{ route('inventory.index') }}" title="Tồn kho hiện tại">
-                    <svg class="nav-icon"><use href="#icon-stock"/></svg><span class="nav-text">Tồn kho hiện tại</span>
-                </a>
-                <a class="nav-link" href="{{ route('inventory.index') }}#recent-transactions" title="Lịch sử nhập xuất">
-                    <svg class="nav-icon"><use href="#icon-history"/></svg><span class="nav-text">Lịch sử nhập xuất</span>
+                <a class="nav-link {{ request()->routeIs('inventory.index') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
+                    <svg class="nav-icon"><use href="#icon-stock"/></svg>
+                    <span class="nav-text">Tra cứu tồn kho</span>
                 </a>
             </div>
 
+            <!-- 4. Hỗ trợ nhập hàng (DSS) -->
             <div class="nav-group">
-                <div class="nav-label">Phân tích tồn kho</div>
-                <a class="nav-link" href="{{ route('reports.bc05') }}" title="Nhu cầu và dự báo">
-                    <svg class="nav-icon"><use href="#icon-chart"/></svg><span class="nav-text">Nhu cầu & dự báo</span>
+                <div class="nav-label">Hỗ trợ nhập hàng</div>
+                <a class="nav-link {{ request()->routeIs('dss.index') ? 'active' : '' }}" href="{{ route('dss.index') }}">
+                    <svg class="nav-icon"><use href="#icon-reorder"/></svg>
+                    <span class="nav-text">Đề xuất bổ sung hàng</span>
                 </a>
-                <a class="nav-link {{ request()->routeIs('inventory.index') && request('stock') === 'attention' ? 'active' : '' }}" href="{{ route('inventory.index', ['stock' => 'attention']) }}" title="Cảnh báo tồn kho">
-                    <svg class="nav-icon"><use href="#icon-alert"/></svg><span class="nav-text">Cảnh báo tồn kho</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('dss.*') ? 'active' : '' }}" href="{{ route('dss.index') }}" title="Đề xuất nhập hàng">
-                    <svg class="nav-icon"><use href="#icon-reorder"/></svg><span class="nav-text">Đề xuất nhập hàng</span>
-                </a>
-                <a class="nav-link" href="{{ route('reports.bc04') }}" title="Hàng chậm luân chuyển">
-                    <svg class="nav-icon"><use href="#icon-history"/></svg><span class="nav-text">Hàng chậm luân chuyển</span>
+                <a class="nav-link {{ request()->routeIs('dss.history') ? 'active' : '' }}" href="{{ route('dss.history') }}">
+                    <svg class="nav-icon"><use href="#icon-history"/></svg>
+                    <span class="nav-text">Lịch sử đặt & nhận hàng</span>
                 </a>
             </div>
 
+            <!-- 5. Báo cáo & Phân tích -->
             <div class="nav-group">
-                <div class="nav-label">Báo cáo</div>
-                <a class="nav-link {{ request()->routeIs('reports.index') ? 'active' : '' }}" href="{{ route('reports.index') }}" title="Tất cả báo cáo">
-                    <svg class="nav-icon"><use href="#icon-report"/></svg><span class="nav-text">Tất cả báo cáo</span>
+                <div class="nav-label">Báo cáo & Phân tích</div>
+                <a class="nav-link {{ request()->routeIs('reports.index') ? 'active' : '' }}" href="{{ route('reports.index') }}">
+                    <svg class="nav-icon"><use href="#icon-report"/></svg>
+                    <span class="nav-text">Trung tâm báo cáo</span>
                 </a>
-                <a class="nav-link {{ request()->routeIs('reports.bc01') ? 'active' : '' }}" href="{{ route('reports.bc01') }}" title="Nhập - xuất - tồn">
-                    <svg class="nav-icon"><use href="#icon-report"/></svg><span class="nav-text">Nhập - xuất - tồn</span>
+                <a class="nav-link {{ request()->routeIs('reports.bc05') ? 'active' : '' }}" href="{{ route('reports.bc05') }}">
+                    <svg class="nav-icon"><use href="#icon-chart"/></svg>
+                    <span class="nav-text">Dự báo nhu cầu</span>
                 </a>
-                <a class="nav-link {{ request()->routeIs('reports.bc02') ? 'active' : '' }}" href="{{ route('reports.bc02') }}" title="Hàng cần nhập">
-                    <svg class="nav-icon"><use href="#icon-reorder"/></svg><span class="nav-text">Hàng cần nhập</span>
+                <a class="nav-link {{ request()->routeIs('reports.bc04') ? 'active' : '' }}" href="{{ route('reports.bc04') }}">
+                    <svg class="nav-icon"><use href="#icon-alert"/></svg>
+                    <span class="nav-text">Rủi ro tồn & chậm luân chuyển</span>
                 </a>
-                <a class="nav-link {{ request()->routeIs('reports.bc03') ? 'active' : '' }}" href="{{ route('reports.bc03') }}" title="Hàng bán chạy">
-                    <svg class="nav-icon"><use href="#icon-chart"/></svg><span class="nav-text">Hàng bán chạy</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('reports.bc04') ? 'active' : '' }}" href="{{ route('reports.bc04') }}" title="Hàng tồn dư">
-                    <svg class="nav-icon"><use href="#icon-stock"/></svg><span class="nav-text">Hàng tồn dư</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('reports.bc05') ? 'active' : '' }}" href="{{ route('reports.bc05') }}" title="Đánh giá dự báo">
-                    <svg class="nav-icon"><use href="#icon-chart"/></svg><span class="nav-text">Đánh giá dự báo</span>
+                <a class="nav-link {{ request()->routeIs('reports.olap') ? 'active' : '' }}" href="{{ route('reports.olap') }}">
+                    <svg class="nav-icon"><use href="#icon-chart"/></svg>
+                    <span class="nav-text">Phân tích kho đa chiều</span>
                 </a>
             </div>
 
+            <!-- 6. Quản trị hệ thống (Admin) -->
             @if(auth()->user()->role === 'admin')
                 <div class="nav-group">
-                    <div class="nav-label">Hệ thống</div>
-                    <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}" title="Quản lý tài khoản">
-                        <svg class="nav-icon"><use href="#icon-users"/></svg><span class="nav-text">Quản lý tài khoản</span>
+                    <div class="nav-label">Quản trị hệ thống</div>
+                    <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
+                        <svg class="nav-icon"><use href="#icon-users"/></svg>
+                        <span class="nav-text">Quản lý người dùng</span>
                     </a>
-                    <a class="nav-link" href="{{ route('dss.index') }}#calculation-settings" title="Thông số kho">
-                        <svg class="nav-icon"><use href="#icon-settings"/></svg><span class="nav-text">Thông số kho</span>
+                    <a class="nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}" href="{{ route('audit.index') }}">
+                        <svg class="nav-icon"><use href="#icon-audit"/></svg>
+                        <span class="nav-text">Nhật ký hoạt động</span>
                     </a>
                 </div>
             @endif
@@ -130,10 +136,10 @@
         <div class="sidebar-foot">
             <div class="user-chip">
                 <span class="avatar">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
-                <span class="user-chip-copy">
+                <div class="user-chip-copy">
                     <span class="user-name">{{ auth()->user()->name }}</span>
-                    <span class="user-role">{{ auth()->user()->role === 'admin' ? 'Quản trị viên' : 'Nhân viên' }}</span>
-                </span>
+                    <span class="user-role">{{ auth()->user()->role === 'admin' ? 'Quản trị viên (Admin)' : 'Nhân viên kho (Staff)' }}</span>
+                </div>
             </div>
         </div>
     </aside>
@@ -141,31 +147,34 @@
     <div class="main-shell">
         <header class="topbar">
             <div class="topbar-start">
-                <button class="icon-button sidebar-toggle" type="button" aria-label="Thu gọn menu" aria-controls="app-sidebar" aria-expanded="true" onclick="toggleMenu()">
+                <button class="icon-button sidebar-toggle" type="button" aria-label="Đóng/mở menu" onclick="toggleMenu()">
                     <svg class="ui-icon"><use href="#icon-menu"/></svg>
                 </button>
-                <div class="topbar-copy">
-                    <h1>Hi, {{ auth()->user()->name }}</h1>
-                    <time class="topbar-clock" id="live-clock" datetime="{{ now()->toIso8601String() }}">{{ now()->format('H:i:s') }}</time>
+                <span class="visually-hidden">Hi, {{ auth()->user()->name }}</span>
+                <div class="topbar-breadcrumbs">
+                    <a href="{{ route('dashboard') }}">Kho</a>
+                    @yield('breadcrumbs')
                 </div>
             </div>
+
             <div class="topbar-actions">
-                <a class="icon-button notification-link" href="{{ route('inventory.index', ['stock' => 'attention']) }}" aria-label="Xem cảnh báo tồn kho" title="Cảnh báo tồn kho">
+                <time class="topbar-clock" id="live-clock" datetime="{{ now()->toIso8601String() }}">{{ now()->format('H:i:s') }}</time>
+                <a class="notification-link" href="{{ route('inventory.index', ['stock' => 'attention']) }}" title="Mặt hàng cần chú ý">
                     <svg class="ui-icon"><use href="#icon-bell"/></svg>
                 </a>
                 <details class="account-menu">
                     <summary>
                         <span class="avatar">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
-                        <span class="account-copy">
+                        <div class="account-copy">
                             <span class="user-name">{{ auth()->user()->name }}</span>
                             <span class="user-role">{{ auth()->user()->role === 'admin' ? 'Admin' : 'Staff' }}</span>
-                        </span>
+                        </div>
                     </summary>
                     <div class="account-dropdown">
                         <div class="account-dropdown-user">
                             <strong>{{ auth()->user()->name }}</strong>
                             <span>{{ auth()->user()->email }}</span>
-                            <span class="badge badge-info">{{ auth()->user()->role === 'admin' ? 'Quản trị viên' : 'Nhân viên' }}</span>
+                            <span class="badge badge-info">{{ auth()->user()->role === 'admin' ? 'Quản trị viên' : 'Nhân viên kho' }}</span>
                         </div>
                         <form action="{{ route('logout') }}" method="POST">
                             @csrf
@@ -178,10 +187,16 @@
 
         <main class="page-content">
             @if(session('success'))
-                <div class="alert alert-success" role="status"><span>✓</span><div>{{ session('success') }}</div></div>
+                <div class="alert alert-success" role="status">
+                    <span>✓</span>
+                    <div>{{ session('success') }}</div>
+                </div>
             @endif
             @if(session('error'))
-                <div class="alert alert-danger" role="alert"><span>!</span><div>{{ session('error') }}</div></div>
+                <div class="alert alert-danger" role="alert">
+                    <span>!</span>
+                    <div>{{ session('error') }}</div>
+                </div>
             @endif
             @if($errors->any())
                 <div class="alert alert-danger" role="alert">
@@ -193,54 +208,39 @@
         </main>
     </div>
 </div>
+
 <script>
     function toggleMenu() {
-        const button = document.querySelector('.sidebar-toggle');
-
-        if (window.matchMedia('(max-width: 800px)').matches) {
-            const isOpen = document.body.classList.toggle('nav-open');
-            button?.setAttribute('aria-expanded', String(isOpen));
-            button?.setAttribute('aria-label', isOpen ? 'Đóng menu' : 'Mở menu');
+        if (window.matchMedia('(max-width: 1024px)').matches) {
+            document.body.classList.toggle('nav-open');
             return;
         }
-
         const collapsed = document.body.classList.toggle('sidebar-collapsed');
-        button?.setAttribute('aria-expanded', String(!collapsed));
-        button?.setAttribute('aria-label', collapsed ? 'Mở rộng menu' : 'Thu gọn menu');
         localStorage.setItem('n07-sidebar-collapsed', String(collapsed));
     }
 
-    if (!window.matchMedia('(max-width: 800px)').matches
-        && localStorage.getItem('n07-sidebar-collapsed') === 'true') {
+    if (!window.matchMedia('(max-width: 1024px)').matches && localStorage.getItem('n07-sidebar-collapsed') === 'true') {
         document.body.classList.add('sidebar-collapsed');
     }
 
     const liveClock = document.getElementById('live-clock');
     if (liveClock) {
         const updateClock = () => {
-            const currentTime = new Date();
-            liveClock.dateTime = currentTime.toISOString();
+            const now = new Date();
+            liveClock.dateTime = now.toISOString();
             liveClock.textContent = new Intl.DateTimeFormat('vi-VN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false,
-            }).format(currentTime);
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            }).format(now);
         };
-
         updateClock();
-        window.setInterval(updateClock, 1000);
+        setInterval(updateClock, 1000);
     }
 
-    document.addEventListener('click', function (event) {
-        if (document.body.classList.contains('nav-open')
-            && !event.target.closest('#app-sidebar')
-            && !event.target.closest('.sidebar-toggle')) {
+    document.addEventListener('click', function (e) {
+        if (document.body.classList.contains('nav-open') && !e.target.closest('#app-sidebar') && !e.target.closest('.sidebar-toggle')) {
             document.body.classList.remove('nav-open');
-            document.querySelector('.sidebar-toggle')?.setAttribute('aria-expanded', 'false');
-            document.querySelector('.sidebar-toggle')?.setAttribute('aria-label', 'Mở menu');
         }
-        if (!event.target.closest('.account-menu')) {
+        if (!e.target.closest('.account-menu')) {
             document.querySelector('.account-menu')?.removeAttribute('open');
         }
     });

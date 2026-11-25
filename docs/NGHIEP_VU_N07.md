@@ -10,10 +10,10 @@ Tài liệu này đối chiếu kế hoạch `Ke_hoach_N07_DB_chi_tiet_IS402 (1)
 | 2 | Danh mục và sản phẩm | UC03, UC04 | Quản lý sản phẩm, danh mục, giá tham khảo và trạng thái kinh doanh. Mã sản phẩm tự sinh dạng SP0001. Sản phẩm có lịch sử kho không xóa cứng. |
 | 3 | Nhập, xuất, tồn | UC06–UC08 | Phiếu nhiều dòng, số lượng nguyên dương, chặn xuất vượt tồn, lưu người thực hiện và chứng từ. Nhập/xuất được xác nhận ngay khi lưu; không có phiếu nháp hoặc hủy phiếu trong phiên bản này. |
 | 4 | Phân tích nhu cầu và cảnh báo | UC09, UC11, UC12 | MA 7/14/30 ngày, SS thủ công/thống kê, Lead Time, mục tiêu dự trữ và quy cách. Thiếu cấu hình hoặc lịch sử không được tạo đề xuất số lượng. |
-| 5 | Quyết định và nhận hàng | UC14 | Admin duyệt, điều chỉnh hoặc từ chối. Lưu số lượng gốc, lượng duyệt, người duyệt, thời điểm, lý do. Nhận từng phần hoặc nhận đủ qua phiếu nhập liên kết. |
-| 6 | Dự báo | UC10 | Admin chạy MA và Linear Regression riêng từng sản phẩm. Lưu chuỗi đầu vào, phiên bản, thời điểm và MAE/RMSE. Staff chỉ xem. |
+| 5 | Quyết định, đặt hàng và nhận kho | UC14 | Admin duyệt/điều chỉnh/từ chối đề xuất; xác nhận đặt hàng thực tế với NCC; nhận hàng từng phần (partially_received) hoặc nhận đủ (fulfilled); hủy đơn an toàn (cancelled). |
+| 6 | Dự báo & DSS nâng cao | UC10 | Admin chạy MA và Linear Regression riêng từng sản phẩm. Tự động phát hiện Censored Demand khi đứt hàng, tính toán Lead Time thực tế (đợt đầu và nhận đủ), Fallback Safety Stock khi phương sai xấp xỉ 0. |
 | 7 | Báo cáo và OLAP | UC02, UC13, UC15, UC16 | BC01–BC05 đúng mã trong Word; thêm bán chạy, lịch sử quyết định và nhật ký. OLAP theo danh mục/sản phẩm/tháng, lọc nhiều chiều, pivot nhập/xuất. |
-| 8 | Dữ liệu demo | Phần 6.4 và 13 | Lệnh `dss:demo` tạo riêng 20 sản phẩm mang tiền tố DEMO-N07, mặc định 183 ngày đến hôm qua. Có nhãn mô phỏng, không dùng để khẳng định độ chính xác trên thực tế. |
+| 8 | Dữ liệu demo và dọn dẹp | Phần 6.4 và 13 | Lệnh `dss:demo` tạo 20 sản phẩm mang tiền tố DEMO-N07. Lệnh `dss:demo-clean` dọn sạch an toàn dữ liệu mô phỏng khi nghiệm thu hoặc trả lại kho sạch. |
 
 ## 2. Vòng đời nghiệp vụ
 
@@ -43,9 +43,12 @@ Mỗi thao tác kho ghi đầu phiếu, chi tiết và lượng nhận của đ�
 
 | Mục đích | Giảm tồn | Dùng làm nhu cầu dự báo |
 |---|---|---|
-| Bán / tiêu thụ (`sale`) | Có | Có |
+| Tiêu thụ nội bộ (`consumption`) | Có | Có |
+| Bán / thương mại (`sale`) | Có | Có |
 | Hàng hỏng (`damage`) | Có | Không |
+| Trả nhà cung cấp (`return_vendor`) | Có | Không |
 | Điều chuyển (`transfer`) | Có | Không |
+| Kiểm kê điều chỉnh (`adjustment`) | Có | Không |
 | Khác (`other`) | Có | Không |
 | Chưa xác định (`unknown`) | Có | Không |
 
@@ -67,14 +70,27 @@ Admin mở Đề xuất nhập hàng → Cấu hình phân tích cho sản phẩ
 Các phép tổng hợp nhu cầu, tồn, hàng chờ về và công thức IP/ROP/Q được thực hiện bằng SQL trong `ReorderRecommendationService` và `ReorderCalculator::calculateSql`. `ReorderCalculator::calculate` giữ phiên bản tính độc lập để kiểm chứng công thức bằng ví dụ tính tay.
 
 ```text
-d = tổng xuất bán trong n ngày đầy đủ / n
-IP = tồn thực tế + lượng đã duyệt chưa nhận - lượng cam kết
+d = tổng xuất tiêu thụ (consumption + sale) trong n ngày đầy đủ / n
+On_Order = SUM(ordered_quantity - received_quantity) cho các đơn ordered / partially_received
+IP = tồn thực tế (On_Hand) + On_Order - lượng cam kết (hiện tại = 0)
 ROP = d × L + SS
-Nếu IP > ROP: Q = 0
-Nếu IP ≤ ROP: Q = ceil(max(0, d × (L + T) + SS - IP) / quy_cách) × quy_cách
+Nếu IP > ROP: Q = 0 (Bình thường, NORMAL)
+Nếu IP ≤ ROP: Q = ceil(max(0, d × (L + T) + SS - IP) / quy_cách) × quy_cách (Cần nhập, REORDER)
 ```
 
-Phạm vi một kho chưa có đơn bán giữ hàng nên **lượng cam kết = 0**. Đề xuất được duyệt đóng vai trò yêu cầu nhập nội bộ; chưa gửi đơn tự động đến nhà cung cấp.
+Quy tắc vòng đời đề xuất:
+- `pending`: DSS phát sinh khi IP <= ROP. On-Order = 0.
+- `approved`: Admin duyệt số lượng trần (approved_quantity). On-Order vẫn = 0 vì chưa đặt NCC.
+- `ordered`: Admin/Staff xác nhận đặt hàng thực tế (ordered_quantity <= approved_quantity). Khi đó On-Order = ordered_quantity.
+- `partially_received`: Đã nhập 1 phần hàng. On-Order = ordered_quantity - received_quantity.
+- `fulfilled`: Đã nhận đủ hàng. On-Order = 0.
+- `rejected`: Admin từ chối đề xuất. On-Order = 0.
+- `cancelled`: Hủy đơn đặt hàng / hủy phần chưa giao. On-Order lập tức hoàn nguyên về 0.
+
+Cơ chế nâng cao:
+- **Fallback Safety Stock**: Khi `safety_mode = 'statistical'`, nếu hệ số z > 0 nhưng phương sai nhu cầu xấp xỉ 0 (do nhu cầu đều), tự động áp dụng đệm an toàn cơ sở ceil(0.15 * d * L) hoặc ngưỡng sàn manual_safety_stock.
+- **Lead Time thực tế**: Hệ thống đo thời gian thực tế từ ordered_at đến phiếu nhập đầu tiên (giao đợt đầu) và đến phiếu nhập cuối cùng (giao đủ). Cung cấp nút đồng bộ Lead Time kế hoạch theo thực tế.
+- **Censored Demand**: Khi kho hết hàng (On_Hand <= 0) kéo dài, hệ thống phát hiện nhu cầu ghi nhận bị méo, tính toán nhu cầu hiệu chỉnh (adjusted_demand) trên các ngày có hàng và cung cấp số lượng gợi ý bù đắp cho Admin.
 
 Ví dụ trong Word: d=13, L=4, T=7, SS=20, IP=70 → ROP=72, Q=93. Nếu quy cách 12 → Q=96. Nếu IP=80 → không đề xuất dù mức tồn mục tiêu cao hơn 80. ROP được lưu dạng thập phân; không dùng ROP làm tròn để kích hoạt sai cảnh báo.
 

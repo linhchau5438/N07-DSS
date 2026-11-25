@@ -122,13 +122,15 @@ class InventoryController extends Controller
         $openRecommendations = $type === 'import'
             ? DB::table('reorder_recommendations')
                 ->join('products', 'reorder_recommendations.product_id', '=', 'products.id')
-                ->where('reorder_recommendations.status', 'approved')
-                ->whereColumn('reorder_recommendations.approved_quantity', '>', 'reorder_recommendations.received_quantity')
+                ->whereIn('reorder_recommendations.status', ['ordered', 'partially_received'])
+                ->whereColumn('reorder_recommendations.ordered_quantity', '>', 'reorder_recommendations.received_quantity')
                 ->select(
                     'reorder_recommendations.id',
                     'reorder_recommendations.product_id',
                     'reorder_recommendations.approved_quantity',
+                    'reorder_recommendations.ordered_quantity',
                     'reorder_recommendations.received_quantity',
+                    'reorder_recommendations.supplier_name',
                     'products.product_code',
                     'products.name',
                     'products.unit',
@@ -158,6 +160,7 @@ class InventoryController extends Controller
             ->join('products', 'inventory_transaction_items.product_id', '=', 'products.id')
             ->where('inventory_transaction_items.inventory_transaction_id', $id)
             ->select(
+                'products.id as product_id',
                 'products.product_code',
                 'products.name',
                 'products.unit',
@@ -178,7 +181,7 @@ class InventoryController extends Controller
         $validated = $request->validate([
             'transaction_date' => 'required|date|before_or_equal:today',
             'note' => 'nullable|string|max:2000',
-            'issue_purpose' => ($type === 'export' ? 'required' : 'nullable').'|in:sale,damage,transfer,other',
+            'issue_purpose' => ($type === 'export' ? 'required' : 'nullable').'|in:consumption,sale,damage,return_vendor,transfer,adjustment,other',
             'reference_no' => 'nullable|string|max:100',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|distinct|exists:products,id',
@@ -246,38 +249,43 @@ class InventoryController extends Controller
                         ->lockForUpdate()
                         ->first();
 
+                    $remainingToReceive = (int) ($recommendation->ordered_quantity ?? 0) - (int) ($recommendation->received_quantity ?? 0);
                     if (
                         ! $recommendation
-                        || $recommendation->status !== 'approved'
+                        || ! in_array($recommendation->status, ['ordered', 'partially_received'], true)
                         || (int) $recommendation->product_id !== $productId
-                        || (int) $recommendation->approved_quantity - (int) $recommendation->received_quantity < $quantity
+                        || $remainingToReceive < $quantity
                     ) {
                         $this->abortWithValidationError(
                             'items',
-                            "Phiếu nhập không khớp với số lượng còn chờ của đề xuất đã duyệt cho {$product->name}."
+                            "Phiếu nhập không khớp với số lượng còn chờ nhận ({$remainingToReceive}) của đơn đặt hàng cho {$product->name}."
                         );
                     }
 
+                    $newReceived = (int) $recommendation->received_quantity + $quantity;
+                    $isFulfilled = $newReceived >= (int) $recommendation->ordered_quantity;
                     DB::table('reorder_recommendations')
                         ->where('id', $recommendationId)
                         ->update([
-                            'received_quantity' => $recommendation->received_quantity + $quantity,
-                            'status' => $recommendation->received_quantity + $quantity >= $recommendation->approved_quantity
+                            'received_quantity' => $newReceived,
+                            'status' => $isFulfilled
                                 ? 'fulfilled'
-                                : 'approved',
+                                : 'partially_received',
+                            'on_order' => max(0, (int) $recommendation->ordered_quantity - $newReceived),
                             'updated_at' => now(),
                         ]);
                 }
 
-                $defaultPrice = $type === 'import'
-                    ? $product->purchase_price
-                    : $product->selling_price;
-                $unitPrice = $item['unit_price'] ?? $defaultPrice;
-                $lineTotal = $quantity * (float) $unitPrice;
-                if ($lineTotal > 9999999999999.99 || $totalValue + $lineTotal > 9999999999999.99) {
-                    $this->abortWithValidationError('items', 'Tổng giá trị phiếu vượt quá giới hạn lưu trữ.');
+                $unitPrice = $type === 'import'
+                    ? ($item['unit_price'] ?? $product->purchase_price)
+                    : null;
+                $lineTotal = $unitPrice !== null ? $quantity * (float) $unitPrice : null;
+                if ($lineTotal !== null) {
+                    if ($lineTotal > 9999999999999.99 || $totalValue + $lineTotal > 9999999999999.99) {
+                        $this->abortWithValidationError('items', 'Tổng giá trị phiếu vượt quá giới hạn lưu trữ.');
+                    }
+                    $totalValue += $lineTotal;
                 }
-                $totalValue += $lineTotal;
 
                 $preparedItems[] = [
                     'product_id' => $productId,
@@ -322,7 +330,7 @@ class InventoryController extends Controller
 
     public function reviewPurpose(Request $request, int $id)
     {
-        $data = $request->validate(['issue_purpose' => 'required|in:sale,damage,transfer,other', 'reason' => 'required|string|max:1000']);
+        $data = $request->validate(['issue_purpose' => 'required|in:consumption,sale,damage,return_vendor,transfer,adjustment,other', 'reason' => 'required|string|max:1000']);
         DB::transaction(function () use ($id, $data) {
             $row = DB::table('inventory_transactions')->where('id', $id)->lockForUpdate()->first();
             abort_unless($row && $row->type === 'export', 404);

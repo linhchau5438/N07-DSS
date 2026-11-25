@@ -69,7 +69,7 @@ class DashboardController extends Controller
             ->join('inventory_transactions', 'inventory_transaction_items.inventory_transaction_id', '=', 'inventory_transactions.id')
             ->join('products', 'inventory_transaction_items.product_id', '=', 'products.id')
             ->where('inventory_transactions.type', 'export')
-            ->where('inventory_transactions.issue_purpose', 'sale')
+            ->whereIn('inventory_transactions.issue_purpose', ['sale', 'consumption'])
             ->whereBetween('inventory_transactions.transaction_date', [
                 now()->subDays(29)->toDateString(),
                 $weekEnd,
@@ -96,6 +96,19 @@ class DashboardController extends Controller
             ->limit(6)
             ->get();
 
+        $openOrdersList = DB::table('reorder_recommendations as r')
+            ->join('products as p', 'r.product_id', '=', 'p.id')
+            ->whereIn('r.status', ['ordered', 'partially_received'])
+            ->whereColumn('r.ordered_quantity', '>', 'r.received_quantity')
+            ->select('r.id', 'r.product_id', 'p.product_code', 'p.name', 'p.unit', 'r.ordered_quantity', 'r.received_quantity', 'r.status', 'r.ordered_at')
+            ->orderBy('r.ordered_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        $todayTransactionsCount = DB::table('inventory_transactions')
+            ->where('transaction_date', now()->toDateString())
+            ->count();
+
         return view('dashboard.index', [
             'metrics' => $metrics,
             'chart' => array_values($chart),
@@ -104,6 +117,10 @@ class DashboardController extends Controller
             'recentTransactions' => $recentTransactions,
             'reorderCount' => DB::table('v_reorder as r')->join('products as p', 'r.product_id', '=', 'p.id')->where('p.status', 1)->where('r.stock_status', 'REORDER')->count(),
             'pendingRecommendations' => DB::table('v_reorder as r')->join('products as p', 'r.product_id', '=', 'p.id')->where('p.status', 1)->where('r.status', 'pending')->count(),
+            'approvedOrdersCount' => DB::table('reorder_recommendations')->where('status', 'approved')->count(),
+            'openOrdersCount' => DB::table('reorder_recommendations')->whereIn('status', ['ordered', 'partially_received'])->whereColumn('ordered_quantity', '>', 'received_quantity')->count(),
+            'openOrdersList' => $openOrdersList,
+            'todayTransactionsCount' => $todayTransactionsCount,
         ]);
     }
 

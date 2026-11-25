@@ -1,274 +1,321 @@
-{{--
-    Đường dẫn: resources/views/products/show.blade.php
-    Mô tả: Giao diện Chi tiết sản phẩm & Phân tích tồn kho DSS chuẩn Monochrome N07, đồng bộ 100% với layout của nhóm.
-    Phụ thuộc: ProductController@show, layouts/app.blade.php, components/ui/*.
---}}
 @extends('layouts.app')
 
-@section('title', 'Chi tiết ' . $product->name)
-@section('page-title', 'Chi tiết sản phẩm & Tồn kho DSS')
-@section('page-subtitle', 'Theo dõi hồ sơ mặt hàng, các chỉ số phân tích điểm đặt hàng lại và lịch sử giao dịch kho.')
+@section('title', 'Chi tiết sản phẩm: ' . $product->name)
+
+@section('breadcrumbs')
+    <span class="sep">/</span>
+    <a href="{{ route('products.index') }}">Sản phẩm</a>
+    <span class="sep">/</span>
+    <span class="current">{{ $product->product_code }}</span>
+@endsection
 
 @section('content')
-<div class="space-y-6">
-
-    {{-- KHUNG 1: HEADER TRANG --}}
-    <x-ui.page-header :title="$product->name"
-                      :chip="$product->category_name ?? 'Chưa phân loại'"
-                      :subtitle="$product->product_code . ' · ' . ($product->description ?: 'Chưa có mô tả cho mặt hàng này.')">
-        <x-slot:actions>
-            <x-ui.button variant="secondary" :href="route('products.index')" icon="arrow_back">
-                Danh sách sản phẩm
-            </x-ui.button>
-            @if(auth()->user()?->role === 'admin')
-                <x-ui.button variant="secondary" :href="route('products.edit', $product->id)" icon="edit">
-                    Chỉnh sửa
-                </x-ui.button>
-                <form action="{{ route('products.status', $product->id) }}" method="POST" class="inline"
-                      onsubmit="return confirm('{{ $product->status == 1 ? 'Ngừng kinh doanh sản phẩm này? Lịch sử kho vẫn được giữ lại.' : 'Mở kinh doanh lại sản phẩm này?' }}')">
-                    @csrf
-                    @method('PUT')
-                    <input type="hidden" name="status" value="{{ $product->status == 1 ? 0 : 1 }}">
-                    <x-ui.button :variant="$product->status == 1 ? 'danger' : 'secondary'" type="submit" :icon="$product->status == 1 ? 'block' : 'check_circle'">
-                        {{ $product->status == 1 ? 'Ngừng kinh doanh' : 'Mở kinh doanh' }}
-                    </x-ui.button>
-                </form>
-            @endif
-        </x-slot:actions>
-    </x-ui.page-header>
-
-    {{-- KHUNG 2: KHÔNG GIAN DỮ LIỆU TỔNG THỂ DÙNG x-ui.section-card --}}
-    <x-ui.section-card spacing="space-y-6">
-
-        {{-- LƯỚI 2 CỘT: BÊN TRÁI THÔNG TIN SẢN PHẨM, BÊN PHẢI CHỈ SỐ DSS --}}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-            {{-- CỘT TRÁI: HỒ SƠ SẢN PHẨM --}}
-            <div class="lg:col-span-2 bg-surface-container-low/40 rounded-2xl p-6 border border-surface-container-high/60 flex flex-col md:flex-row gap-6 shadow-2xs">
-                {{-- Hình ảnh sản phẩm --}}
-                <div class="w-36 h-36 rounded-2xl bg-white border border-surface-container-high/60 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs relative">
-                    @if(!empty($product->image))
-                        <img class="w-full h-full object-cover"
-                             src="{{ asset('storage/' . $product->image) }}"
-                             alt="{{ $product->name }}">
-                    @else
-                        <div class="flex flex-col items-center justify-center text-on-surface-variant/60">
-                            <span class="material-symbols-outlined text-[48px] text-surface-container-highest">inventory_2</span>
-                            <span class="font-mono font-bold text-xs mt-1 text-on-surface-variant">{{ $product->product_code }}</span>
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Thông tin chi tiết --}}
-                <div class="flex-1 space-y-4 min-w-0">
-                    <div class="space-y-1.5">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <x-ui.status-pill :variant="$product->status == 1 ? 'success' : 'neutral'"
-                                              :label="$product->status == 1 ? 'Đang kinh doanh' : 'Ngừng kinh doanh'" />
-                            <span class="text-xs font-mono px-2 py-0.5 rounded-md bg-surface-container-high/60 text-on-surface font-semibold">
-                                SKU: {{ $product->product_code }}
-                            </span>
-                        </div>
-                        <h2 class="text-xl font-bold text-on-surface tracking-tight">{{ $product->name }}</h2>
-                        <p class="text-xs text-on-surface-variant leading-relaxed">{{ $product->description ?: 'Mặt hàng chưa có ghi chú mô tả bổ sung.' }}</p>
-                    </div>
-
-                    {{-- Thông số định giá & quy cách --}}
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-3 border-t border-surface-container-high/60 text-xs">
-                        <div>
-                            <span class="text-on-surface-variant block text-[11px] font-mono">Danh mục</span>
-                            <strong class="text-sm text-on-surface mt-0.5 block">{{ $product->category_name ?? '—' }}</strong>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant block text-[11px] font-mono">Đơn vị tính</span>
-                            <strong class="text-sm text-on-surface mt-0.5 block">{{ $product->unit }}</strong>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant block text-[11px] font-mono">Quy cách lô đặt</span>
-                            <strong class="text-sm text-on-surface mt-0.5 block font-mono">{{ $product->pack_size ?? 1 }} {{ $product->unit }}/kiện</strong>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant block text-[11px] font-mono">Giá nhập tham khảo</span>
-                            <strong class="text-sm text-on-surface mt-0.5 block font-mono">{{ number_format($product->purchase_price, 0, ',', '.') }} đ</strong>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant block text-[11px] font-mono">Giá bán niêm yết</span>
-                            <strong class="text-sm text-emerald-800 mt-0.5 block font-mono font-bold">{{ number_format($product->selling_price, 0, ',', '.') }} đ</strong>
-                        </div>
-                        <div>
-                            <span class="text-on-surface-variant block text-[11px] font-mono">Ước tính giá trị tồn</span>
-                            <strong class="text-sm text-on-surface mt-0.5 block font-mono">
-                                {{ number_format($product->on_hand * $product->purchase_price, 0, ',', '.') }} đ
-                            </strong>
-                        </div>
-                    </div>
-
-                    {{-- Nút thao tác nhanh nhập / xuất riêng món này --}}
-                    <div class="pt-2 flex items-center gap-2 flex-wrap">
-                        <a href="{{ route('inventory.create', ['type' => 'import', 'product_id' => $product->id]) }}"
-                           class="h-8 px-3 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-white border border-surface-container-high/70 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95">
-                            <span class="material-symbols-outlined text-[15px] text-emerald-700">archive</span>
-                            <span>Lập phiếu nhập</span>
-                        </a>
-                        <a href="{{ route('inventory.create', ['type' => 'export', 'product_id' => $product->id]) }}"
-                           class="h-8 px-3 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-white border border-surface-container-high/70 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95">
-                            <span class="material-symbols-outlined text-[15px] text-amber-700">unarchive</span>
-                            <span>Lập phiếu xuất</span>
-                        </a>
-                        <a href="{{ route('reports.bc05', ['product_id' => $product->id]) }}"
-                           class="h-8 px-3 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-white border border-surface-container-high/70 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-all active:scale-95">
-                            <span class="material-symbols-outlined text-[15px] text-secondary">trending_up</span>
-                            <span>Xem phân tích nhu cầu BC05</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            {{-- CỘT PHẢI: CHỈ SỐ DSS & TÌNH TRẠNG TỒN KHO --}}
-            @php
-                $isReorder = $recommendation && ($recommendation->suggested_quantity ?? 0) > 0;
-            @endphp
-            <div class="bg-surface-container-low/40 rounded-2xl p-6 border {{ $isReorder ? 'border-amber-400/80 ring-1 ring-amber-400/20' : 'border-surface-container-high/60' }} space-y-4 flex flex-col justify-between shadow-2xs">
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-on-surface flex items-center gap-2 font-mono">
-                            <span class="material-symbols-outlined text-[18px] text-secondary">analytics</span>
-                            <span>Chỉ số hỗ trợ quyết định (DSS)</span>
-                        </h3>
-                        @if($isReorder)
-                            <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-900 border border-amber-500/30 text-[11px] font-bold font-mono">
-                                Cần nhập hàng
-                            </span>
-                        @else
-                            <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-900 border border-emerald-500/30 text-[11px] font-bold font-mono">
-                                Tồn kho an toàn
-                            </span>
-                        @endif
-                    </div>
-
-                    {{-- 4 ô chỉ số DSS cốt lõi --}}
-                    <div class="grid grid-cols-2 gap-2.5 text-xs font-mono">
-                        <div class="p-3 rounded-xl bg-white border border-surface-container-high/60">
-                            <span class="text-on-surface-variant block text-[10px] uppercase font-bold tracking-wider">Tồn thực tế hiện có</span>
-                            <strong class="text-base {{ $product->on_hand <= 0 ? 'text-red-600' : 'text-on-surface' }} mt-0.5 block">
-                                {{ $product->on_hand }} <span class="text-xs font-normal text-on-surface-variant">{{ $product->unit }}</span>
-                            </strong>
-                        </div>
-                        <div class="p-3 rounded-xl bg-white border border-surface-container-high/60">
-                            <span class="text-on-surface-variant block text-[10px] uppercase font-bold tracking-wider">Tồn an toàn (SS)</span>
-                            <strong class="text-base text-on-surface mt-0.5 block">
-                                {{ $recommendation->safety_stock ?? '—' }} <span class="text-xs font-normal text-on-surface-variant">{{ $recommendation ? $product->unit : '' }}</span>
-                            </strong>
-                        </div>
-                        <div class="p-3 rounded-xl bg-white border border-surface-container-high/60">
-                            <span class="text-on-surface-variant block text-[10px] uppercase font-bold tracking-wider">Điểm đặt hàng (ROP)</span>
-                            <strong class="text-base text-secondary mt-0.5 block font-bold">
-                                {{ $recommendation->reorder_point ?? '—' }} <span class="text-xs font-normal text-on-surface-variant">{{ $recommendation ? $product->unit : '' }}</span>
-                            </strong>
-                        </div>
-                        <div class="p-3 rounded-xl bg-white border border-surface-container-high/60">
-                            <span class="text-on-surface-variant block text-[10px] uppercase font-bold tracking-wider">Nhu cầu TB (d)</span>
-                            <strong class="text-base text-on-surface mt-0.5 block">
-                                {{ $recommendation->average_daily_demand ?? '—' }} <span class="text-[11px] font-normal text-on-surface-variant">/ngày</span>
-                            </strong>
-                        </div>
-                    </div>
-
-                    {{-- Hộp thông báo đề xuất số lượng nhập Q --}}
-                    @if($isReorder)
-                        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-xs space-y-1.5 shadow-2xs">
-                            <div class="flex items-center gap-2 font-bold text-amber-900">
-                                <span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
-                                <span>Khuyến nghị nhập: {{ $recommendation->suggested_quantity }} {{ $product->unit }}</span>
-                            </div>
-                            <p class="text-[11px] text-amber-900/80 leading-relaxed">
-                                {{ $recommendation->explanation ?: 'Tồn kho khả dụng (IP) đã chạm hoặc thấp hơn ngưỡng đặt lại ROP.' }}
-                            </p>
-                        </div>
-                    @else
-                        <div class="p-3.5 rounded-xl bg-surface-container-lowest border border-surface-container-high/60 text-xs space-y-1">
-                            <span class="font-bold text-on-surface flex items-center gap-1.5 text-secondary">
-                                <span class="material-symbols-outlined text-[16px]">verified</span>
-                                <span>Chưa cần đặt hàng thêm</span>
-                            </span>
-                            <p class="text-[11px] text-on-surface-variant leading-relaxed">
-                                Tồn kho khả dụng hiện tại vẫn cao hơn điểm đặt hàng lại (ROP). Hệ thống sẽ tự động đề xuất khi số dư chạm ngưỡng.
-                            </p>
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Nối đường dẫn xem chi tiết thuật toán --}}
-                <div class="pt-2 border-t border-surface-container-high/60 flex items-center justify-between">
-                    <a href="{{ route('dss.index') }}" class="text-xs font-bold text-emerald-800 hover:text-emerald-950 hover:underline inline-flex items-center gap-1">
-                        <span>Đến màn hình đề xuất DSS</span>
-                        <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
-                    </a>
-                    <a href="{{ route('dss.history') }}" class="text-xs font-mono text-on-surface-variant hover:text-on-surface">
-                        Xem lịch sử DSS
-                    </a>
-                </div>
-            </div>
-
+<div class="page-heading">
+    <div style="display:flex;align-items:center;gap:16px">
+        <img src="{{ $product->image ? asset('storage/'.$product->image) : asset('images/product-placeholder.svg') }}"
+             alt="{{ $product->name }}"
+             style="width:52px;height:52px;object-fit:cover;border-radius:var(--radius-md);border:1px solid var(--border);background:#fff">
+        <div>
+            <h2>{{ $product->name }}</h2>
+            <p>
+                Mã SKU: <strong>{{ $product->product_code }}</strong> · 
+                Danh mục: <span class="badge badge-muted">{{ $product->category_name }}</span> · 
+                @if($product->status == 1)
+                    <span class="badge badge-success">Đang kinh doanh</span>
+                @else
+                    <span class="badge badge-muted">Ngừng kinh doanh</span>
+                @endif
+            </p>
         </div>
-
-        {{-- BẢNG LỊCH SỬ GIAO DỊCH GẦN NHẤT CỦA SẢN PHẨM --}}
-        <div class="pt-4 border-t border-surface-container-high/60 space-y-4">
-            <div class="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                    <h3 class="font-headline-sm text-base font-bold text-on-surface flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[20px] text-secondary">receipt_long</span>
-                        <span>Lịch sử nhập - xuất gần nhất</span>
-                    </h3>
-                    <p class="font-body-sm text-xs text-on-surface-variant">Hiển thị tối đa 10 giao dịch kho phát sinh gần nhất của mặt hàng này</p>
-                </div>
-                <a href="{{ route('inventory.history', ['search' => $product->product_code]) }}"
-                   class="text-xs font-bold text-on-surface hover:text-emerald-800 hover:underline inline-flex items-center gap-1">
-                    <span>Xem toàn bộ lịch sử trong sổ kho</span>
-                    <span class="material-symbols-outlined text-[14px]">open_in_new</span>
-                </a>
-            </div>
-
-            <x-ui.data-table minWidth="min-w-[850px]">
-                <x-slot:header>
-                    <th class="py-3.5 pl-6 pr-4 w-36">Mã chứng từ</th>
-                    <th class="py-3.5 px-4 text-center w-32">Loại phiếu</th>
-                    <th class="py-3.5 px-4 w-36">Ngày giao dịch</th>
-                    <th class="py-3.5 px-4 text-right w-36">Số lượng</th>
-                    <th class="py-3.5 px-4 text-right w-36">Đơn giá</th>
-                    <th class="py-3.5 pl-4 pr-6 w-48">Nhân viên thực hiện</th>
-                </x-slot:header>
-
-                @forelse($movements as $movement)
-                    <tr class="hover:bg-surface-container-low/70 transition-colors h-[72px]">
-                        <x-ui.cell-code :code="$movement->transaction_code ?? '—'" class="pl-6" />
-                        <td class="py-5 px-4 text-center whitespace-nowrap">
-                            <x-ui.status-pill :variant="$movement->type === 'import' ? 'success' : 'info'"
-                                              :label="$movement->type === 'import' ? 'Nhập kho' : 'Xuất kho'" />
-                        </td>
-                        <x-ui.cell-date :date="$movement->transaction_date" class="px-4" />
-                        <x-ui.cell-number :value="$movement->quantity" :unit="$product->unit" class="px-4" />
-                        <x-ui.cell-money :amount="$movement->unit_price" class="px-4" />
-                        <td class="py-5 pl-4 pr-6 whitespace-nowrap font-medium text-xs text-on-surface">
-                            <div class="flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-[15px] text-on-surface-variant">person</span>
-                                <span>{{ $movement->staff_name ?? 'Tài khoản đã xóa' }}</span>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="p-0 border-0">
-                            <x-ui.empty-state icon="receipt_long"
-                                              title="Chưa có giao dịch"
-                                              message="Chưa có giao dịch nhập hoặc xuất kho nào cho sản phẩm này." />
-                        </td>
-                    </tr>
-                @endforelse
-            </x-ui.data-table>
-        </div>
-
-    </x-ui.section-card>
-
+    </div>
+    <div class="page-actions">
+        <a href="{{ route('products.index') }}" class="btn btn-secondary">← Danh sách sản phẩm</a>
+        @if(auth()->user()->role === 'admin')
+            <a href="{{ route('products.edit', $product->id) }}" class="btn">
+                Chỉnh sửa thông tin
+            </a>
+            <form action="{{ route('products.status', $product->id) }}" method="POST"
+                  onsubmit="return confirm('{{ $product->status == 1 ? 'Ngừng kinh doanh sản phẩm này?' : 'Mở kinh doanh lại sản phẩm này?' }}')">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="status" value="{{ $product->status == 1 ? 0 : 1 }}">
+                <button class="btn {{ $product->status == 1 ? 'btn-warn' : 'btn-secondary' }}" type="submit">
+                    {{ $product->status == 1 ? 'Ngừng kinh doanh' : 'Kích hoạt lại' }}
+                </button>
+            </form>
+        @endif
+    </div>
 </div>
+
+<!-- Progressive Tabs -->
+<div class="saas-tabs">
+    <button type="button" class="saas-tab active" onclick="switchProductTab(event, 'tab-overview')">
+        📊 Tổng quan tồn kho & Thông tin
+    </button>
+    <button type="button" class="saas-tab" onclick="switchProductTab(event, 'tab-history')">
+        📜 Lịch sử nhập xuất <span class="tab-badge">{{ count($movements) }}</span>
+    </button>
+    @if(auth()->user()->role === 'admin')
+        <button type="button" class="saas-tab" onclick="switchProductTab(event, 'tab-dss')">
+            ⚙️ Cấu hình thông số nhập hàng (DSS)
+        </button>
+    @endif
+</div>
+
+<!-- Tab 1: Tổng quan tồn kho & Thông tin -->
+<div id="tab-overview" class="tab-pane">
+    <div class="kpi-grid" style="margin-bottom:20px">
+        <div class="kpi-card">
+            <div class="kpi-head">
+                <span class="kpi-label">Tồn kho thực tế</span>
+                <span class="kpi-icon info">📦</span>
+            </div>
+            <div class="kpi-val {{ $product->on_hand <= 0 ? 'text-danger' : '' }}">
+                {{ number_format($product->on_hand) }} <small style="font-size:13px;font-weight:600;color:var(--text-muted)">{{ $product->unit }}</small>
+            </div>
+            <div class="kpi-sub">
+                <span>Số lượng kiểm đếm sẵn có trong kho</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-head">
+                <span class="kpi-label">Ngưỡng đặt hàng lại (ROP)</span>
+                <span class="kpi-icon warning">🎯</span>
+            </div>
+            <div class="kpi-val">
+                {{ $recommendation ? number_format($recommendation->reorder_point, 1) : '—' }} <small style="font-size:13px;font-weight:600;color:var(--text-muted)">{{ $product->unit }}</small>
+            </div>
+            <div class="kpi-sub">
+                <span>Kích hoạt đề xuất khi vị thế tồn kho ≤ ROP</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-head">
+                <span class="kpi-label">Tồn kho dự phòng (SS)</span>
+                <span class="kpi-icon">🛡️</span>
+            </div>
+            <div class="kpi-val">
+                {{ $recommendation ? number_format($recommendation->safety_stock, 1) : '—' }} <small style="font-size:13px;font-weight:600;color:var(--text-muted)">{{ $product->unit }}</small>
+            </div>
+            <div class="kpi-sub">
+                <span>Đệm an toàn chống biến động nhu cầu & trễ hạn</span>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-head">
+                <span class="kpi-label">Lượng đề xuất nhập (Q)</span>
+                <span class="kpi-icon {{ ($recommendation && $recommendation->suggested_quantity > 0) ? 'warning' : 'info' }}">🚚</span>
+            </div>
+            <div class="kpi-val" style="color:var(--primary)">
+                {{ $recommendation ? number_format($recommendation->suggested_quantity) : '0' }} <small style="font-size:13px;font-weight:600;color:var(--text-muted)">{{ $product->unit }}</small>
+            </div>
+            <div class="kpi-sub">
+                @if($recommendation && $recommendation->suggested_quantity > 0)
+                    <a href="{{ route('dss.index') }}" style="color:var(--warning);font-weight:700">Xem đề xuất cần duyệt →</a>
+                @else
+                    <span>Chưa cần nhập bổ sung</span>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="panels">
+        <!-- Thông số quy cách -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h3 class="card-title">Quy cách hàng hóa & giá tham chiếu</h3>
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;font-size:12.5px">
+                <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border-light)">
+                    <span class="text-muted">Mã định danh SKU</span>
+                    <strong>{{ $product->product_code }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border-light)">
+                    <span class="text-muted">Danh mục hàng</span>
+                    <strong>{{ $product->category_name }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border-light)">
+                    <span class="text-muted">Đơn vị tính</span>
+                    <strong>{{ $product->unit }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border-light)">
+                    <span class="text-muted">Giá vốn nhập gần nhất</span>
+                    <strong style="color:var(--primary)">{{ $product->purchase_price ? number_format($product->purchase_price, 0, ',', '.') . ' đ' : '—' }}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border-light)">
+                    <span class="text-muted">Ước tính giá trị tồn kho</span>
+                    <strong>{{ number_format($product->on_hand * ($product->purchase_price ?? 0), 0, ',', '.') }} đ</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between">
+                    <span class="text-muted">Mô tả hàng hóa</span>
+                    <span style="max-width:280px;text-align:right">{{ $product->description ?: 'Chưa có mô tả' }}</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trạng thái DSS -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h3 class="card-title">Căn cứ hỗ trợ ra quyết định (DSS)</h3>
+                </div>
+                <a href="{{ route('dss.index') }}" class="btn btn-secondary btn-sm">Màn hình DSS →</a>
+            </div>
+            @if($recommendation)
+                <div style="background:var(--bg-subtle);padding:14px;border-radius:var(--radius-md);margin-bottom:14px;font-size:12px;line-height:1.6">
+                    <strong style="color:var(--text-main);display:block;margin-bottom:4px">Giải thích đề xuất gần nhất:</strong>
+                    {{ $recommendation->explanation }}
+                </div>
+                <div style="font-size:12px;color:var(--text-muted)">
+                    Nhu cầu tiêu thụ trung bình quan sát: <strong>{{ number_format($recommendation->average_daily_demand, 2) }} {{ $product->unit }}/ngày</strong>.
+                </div>
+            @else
+                <div class="empty-state" style="padding:24px">
+                    <p class="empty-desc">Chưa có đề xuất tính toán gần đây cho sản phẩm này.</p>
+                </div>
+            @endif
+        </section>
+    </div>
+</div>
+
+<!-- Tab 2: Lịch sử giao dịch nhập/xuất -->
+<div id="tab-history" class="tab-pane" style="display:none">
+    <section class="card" style="padding:0;overflow:hidden">
+        <div class="table-wrap" style="border:none">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mã phiếu</th>
+                        <th>Loại giao dịch</th>
+                        <th>Ngày ghi nhận</th>
+                        <th class="text-right">Số lượng</th>
+                        <th>Mục đích / Ghi chú</th>
+                        <th>Thủ kho thực hiện</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($movements as $m)
+                        <tr>
+                            <td>
+                                <a href="{{ route('inventory.show', $m->id) }}" class="product-title" style="color:var(--primary)">
+                                    {{ $m->transaction_code }}
+                                </a>
+                            </td>
+                            <td>
+                                @if($m->type === 'import')
+                                    <span class="badge badge-success">Nhập kho</span>
+                                @else
+                                    <span class="badge badge-info">Xuất kho</span>
+                                @endif
+                            </td>
+                            <td class="text-muted">{{ \Illuminate\Support\Carbon::parse($m->transaction_date)->format('d/m/Y') }}</td>
+                            <td class="text-right">
+                                <strong>{{ number_format($m->quantity) }}</strong> {{ $product->unit }}
+                            </td>
+                            <td class="text-muted">{{ $m->issue_purpose ?? '—' }}</td>
+                            <td>{{ $m->staff_name ?? 'Hệ thống' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                Chưa có giao dịch nào được ghi nhận cho sản phẩm này.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- Tab 3: Cấu hình bổ sung hàng (DSS) -->
+@if(auth()->user()->role === 'admin')
+<div id="tab-dss" class="tab-pane" style="display:none">
+    <section class="card" style="max-width:800px">
+        <div class="card-header">
+            <div>
+                <h3 class="card-title">Thiết lập tham số nhập hàng & Tồn an toàn</h3>
+                <div class="card-subtitle">Hệ thống áp dụng các tham số này để tự động tính toán ROP và lượng đặt hàng Q</div>
+            </div>
+        </div>
+
+        <form action="{{ route('dss.settings', $product->id) }}" method="POST">
+            @csrf
+            @method('PUT')
+
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="lead_time_days">Thời gian giao hàng dự kiến của NCC (Lead Time, ngày) *</label>
+                    <input id="lead_time_days" type="number" name="lead_time_days" min="1" max="365" required
+                           value="{{ old('lead_time_days', $settings->lead_time_days ?? 7) }}">
+                    <span class="form-help">Số ngày từ lúc đặt hàng thành công đến khi hàng về tới kho.</span>
+                </div>
+
+                <div class="form-field">
+                    <label for="service_level">Mức độ phục vụ mong muốn (Z-Score) *</label>
+                    <select id="service_level" name="service_level" required>
+                        <option value="0.95" {{ (old('service_level', $settings->service_level ?? '0.95') == '0.95') ? 'selected' : '' }}>95% (Khuyến nghị, Z = 1.65)</option>
+                        <option value="0.90" {{ (old('service_level', $settings->service_level ?? '') == '0.90') ? 'selected' : '' }}>90% (Hàng tiêu thụ ổn định, Z = 1.28)</option>
+                        <option value="0.99" {{ (old('service_level', $settings->service_level ?? '') == '0.99') ? 'selected' : '' }}>99% (Mặt hàng trọng yếu, Z = 2.33)</option>
+                        <option value="0.00" {{ (old('service_level', $settings->service_level ?? '') == '0.00') ? 'selected' : '' }}>0% (Không dùng tồn an toàn, Z = 0, SS = 0)</option>
+                    </select>
+                    <span class="form-help">Tỷ lệ đáp ứng đơn hàng mong muốn không bị gián đoạn.</span>
+                </div>
+
+                <div class="form-field">
+                    <label for="safety_mode">Chế độ tồn kho an toàn (Safety Stock Mode) *</label>
+                    <select id="safety_mode" name="safety_mode" required>
+                        <option value="statistical" {{ (old('safety_mode', $settings->safety_mode ?? 'statistical') == 'statistical') ? 'selected' : '' }}>Thống kê theo phương sai (Statistical)</option>
+                        <option value="manual" {{ (old('safety_mode', $settings->safety_mode ?? '') == 'manual') ? 'selected' : '' }}>Mức sàn chỉ định thủ công (Manual Floor)</option>
+                    </select>
+                    <span class="form-help">Hệ thống luôn có đệm cơ sở (Base Fallback 15%) bảo vệ khi phương sai xấp xỉ 0.</span>
+                </div>
+
+                <div class="form-field">
+                    <label for="manual_safety_stock">Tồn an toàn tối thiểu chỉ định (Floor SS)</label>
+                    <input id="manual_safety_stock" type="number" name="manual_safety_stock" min="0" step="0.1"
+                           value="{{ old('manual_safety_stock', $settings->manual_safety_stock ?? 0) }}">
+                    <span class="form-help">Mức sàn tối thiểu không thể thấp hơn (đơn vị: {{ $product->unit }}).</span>
+                </div>
+
+                <div class="form-field">
+                    <label for="pack_size">Quy cách kiện / gói đặt hàng (Pack Size)</label>
+                    <input id="pack_size" type="number" name="pack_size" min="1"
+                           value="{{ old('pack_size', $settings->pack_size ?? 1) }}">
+                    <span class="form-help">Hệ thống sẽ làm tròn số lượng đặt theo bội số của kiện (Ví dụ: 1 thùng = 24 lon).</span>
+                </div>
+
+                <div class="form-field">
+                    <label for="ma_days">Số ngày quan sát trung bình tiêu thụ (MA Days)</label>
+                    <input id="ma_days" type="number" name="ma_days" min="7" max="180"
+                           value="{{ old('ma_days', $settings->ma_days ?? 30) }}">
+                    <span class="form-help">Khoảng thời gian lịch sử dùng để tính nhu cầu hàng ngày (7 đến 180 ngày).</span>
+                </div>
+            </div>
+
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-light);display:flex;gap:10px">
+                <button type="submit" class="btn">
+                    ✓ Cập nhật cấu hình nhập hàng
+                </button>
+            </div>
+        </form>
+    </section>
+</div>
+@endif
+
+@push('scripts')
+<script>
+    function switchProductTab(e, tabId) {
+        document.querySelectorAll('.saas-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+        e.currentTarget.classList.add('active');
+        document.getElementById(tabId).style.display = 'block';
+    }
+</script>
+@endpush
 @endsection

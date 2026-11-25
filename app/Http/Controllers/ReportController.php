@@ -49,7 +49,7 @@ class ReportController extends Controller
                 "SUM(CASE WHEN inventory_transactions.transaction_date BETWEEN ? AND ? AND inventory_transactions.type = 'export' THEN inventory_transaction_items.quantity ELSE 0 END) as exported",
                 [$from, $to],
             )
-            ->selectRaw("SUM(CASE WHEN inventory_transactions.transaction_date BETWEEN ? AND ? AND inventory_transactions.type = 'export' AND inventory_transactions.issue_purpose = 'sale' THEN inventory_transaction_items.quantity ELSE 0 END) as consumed", [$from, $to])
+            ->selectRaw("SUM(CASE WHEN inventory_transactions.transaction_date BETWEEN ? AND ? AND inventory_transactions.type = 'export' AND inventory_transactions.issue_purpose IN ('sale', 'consumption') THEN inventory_transaction_items.quantity ELSE 0 END) as consumed", [$from, $to])
             ->groupBy('inventory_transaction_items.product_id');
 
         $query = DB::table('products')
@@ -119,13 +119,14 @@ class ReportController extends Controller
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->where('products.status', 1)
             ->where('reorder_recommendations.stock_status', 'REORDER')
-            ->whereRaw('(reorder_recommendations.suggested_quantity > 0 OR reorder_recommendations.status = ?)', ['approved'])
+            ->whereRaw('(reorder_recommendations.suggested_quantity > 0 OR reorder_recommendations.status IN (?, ?, ?))', ['approved', 'ordered', 'partially_received'])
             ->select(
                 'products.product_code',
                 'products.name',
                 'categories.name as category_name',
                 'reorder_recommendations.suggested_quantity',
                 'reorder_recommendations.approved_quantity',
+                'reorder_recommendations.ordered_quantity',
                 'reorder_recommendations.received_quantity',
                 'reorder_recommendations.status',
                 'reorder_recommendations.reorder_point',
@@ -150,6 +151,7 @@ class ReportController extends Controller
             $row->inventory_position,
             $row->suggested_quantity,
             $row->approved_quantity ?? '—',
+            $row->ordered_quantity ?? '—',
             $row->received_quantity,
             $row->status,
             $row->explanation,
@@ -157,7 +159,7 @@ class ReportController extends Controller
 
         return $this->tableReport(
             'BC03 - Báo cáo sản phẩm cần nhập hàng',
-            ['Mã', 'Sản phẩm', 'Danh mục', 'ROP', 'IP', 'Q đề xuất', 'Q duyệt', 'Đã nhận', 'Trạng thái', 'Giải thích'],
+            ['Mã', 'Sản phẩm', 'Danh mục', 'ROP', 'IP', 'Q đề xuất', 'Q duyệt', 'Q đặt thực tế', 'Đã nhận', 'Trạng thái', 'Giải thích'],
             $rows,
             null,
             null,
@@ -175,11 +177,10 @@ class ReportController extends Controller
             ->join('products', 'inventory_transaction_items.product_id', '=', 'products.id')
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->where('inventory_transactions.type', 'export')
-            ->where('inventory_transactions.issue_purpose', 'sale')
+            ->whereIn('inventory_transactions.issue_purpose', ['sale', 'consumption'])
             ->whereBetween('inventory_transactions.transaction_date', [$from, $to])
             ->select('products.product_code', 'products.name', 'categories.name as category_name', 'products.unit')
             ->selectRaw('SUM(inventory_transaction_items.quantity) as sold_quantity')
-            ->selectRaw('SUM(inventory_transaction_items.line_total) as sales_value')
             ->groupBy('products.id', 'products.product_code', 'products.name', 'categories.name', 'products.unit')
             ->orderByDesc('sold_quantity');
 
@@ -196,12 +197,11 @@ class ReportController extends Controller
             $row->category_name,
             $row->sold_quantity,
             $row->unit,
-            number_format($row->sales_value, 0, ',', '.').' đ',
         ])->all();
 
         return $this->tableReport(
-            'Báo cáo sản phẩm bán chạy',
-            ['Mã', 'Sản phẩm', 'Danh mục', 'Đã xuất', 'Đơn vị', 'Giá trị xuất'],
+            'Báo cáo sản phẩm tiêu thụ nhiều (Consumption)',
+            ['Mã', 'Sản phẩm', 'Danh mục', 'Đã xuất tiêu thụ', 'Đơn vị'],
             $rows,
             $from,
             $to,
@@ -219,7 +219,7 @@ class ReportController extends Controller
         $sales = DB::table('inventory_transaction_items')
             ->join('inventory_transactions', 'inventory_transaction_items.inventory_transaction_id', '=', 'inventory_transactions.id')
             ->where('inventory_transactions.type', 'export')
-            ->where('inventory_transactions.issue_purpose', 'sale')
+            ->whereIn('inventory_transactions.issue_purpose', ['sale', 'consumption'])
             ->whereDate('inventory_transactions.transaction_date', '<=', $to)
             ->select('inventory_transaction_items.product_id')
             ->selectRaw('MAX(inventory_transactions.transaction_date) as last_sold_at')
@@ -254,21 +254,36 @@ class ReportController extends Controller
             $query->where('products.id', $productId);
         }
 
-        $rows = $query->get()->map(fn ($row) => [
-            $row->product_code,
-            $row->name,
-            $row->category_name,
-            $row->on_hand,
-            $row->unit,
-            $row->recent_sales,
-            $row->last_sold_at ?: 'Chưa từng xuất',
-            $row->recent_sales > 0 ? round($row->on_hand * $days / $row->recent_sales, 1) : 'Không có tiêu thụ',
-            number_format($row->on_hand * $row->purchase_price, 0).' đ',
-        ])->all();
+        $rows = $query->get()->map(function ($row) use ($days) {
+            $daysOfSupply = $row->recent_sales > 0 ? round($row->on_hand * $days / $row->recent_sales, 1) : null;
+
+            if ($row->recent_sales <= 0 || ! $row->last_sold_at) {
+                $classification = 'Hàng không tiêu thụ (Dead Stock)';
+            } elseif ($daysOfSupply !== null && $daysOfSupply > 90) {
+                $classification = 'Hàng tồn dư mức cao (Excess Stock)';
+            } elseif ($daysOfSupply !== null && $daysOfSupply > 60) {
+                $classification = 'Hàng chậm luân chuyển (Slow Moving)';
+            } else {
+                $classification = 'Tồn kho mức bình thường';
+            }
+
+            return [
+                $row->product_code,
+                $row->name,
+                $row->category_name,
+                $row->on_hand,
+                $row->unit,
+                $row->recent_sales,
+                $row->last_sold_at ?: 'Chưa từng xuất',
+                $daysOfSupply !== null ? $daysOfSupply . ' ngày' : 'Không có tiêu thụ',
+                $classification,
+                number_format($row->on_hand * $row->purchase_price, 0).' đ',
+            ];
+        })->all();
 
         return $this->tableReport(
-            'BC04 - Báo cáo hàng tồn dư, chậm luân chuyển',
-            ['Mã', 'Sản phẩm', 'Danh mục', 'Tồn', 'Đơn vị', 'Xuất trong kỳ', 'Ngày xuất gần nhất', 'Số ngày tồn', 'Vốn tồn tham khảo'],
+            'BC04 - Báo cáo phân loại hàng tồn dư, chậm luân chuyển & không tiêu thụ',
+            ['Mã', 'Sản phẩm', 'Danh mục', 'Tồn', 'Đơn vị', 'Xuất trong kỳ', 'Ngày xuất gần nhất', 'Số ngày tồn (DOS)', 'Phân loại rủi ro', 'Vốn tồn tham khảo'],
             $rows,
             $from,
             $to,

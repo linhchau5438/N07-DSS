@@ -87,6 +87,7 @@ class ProductController extends Controller
             ->leftJoin('users', 'inventory_transactions.user_id', '=', 'users.id')
             ->where('inventory_transaction_items.product_id', $id)
             ->select(
+                'inventory_transactions.id',
                 'inventory_transactions.transaction_code',
                 'inventory_transactions.type',
                 'inventory_transactions.transaction_date',
@@ -99,10 +100,15 @@ class ProductController extends Controller
             ->limit(10)
             ->get();
 
+        $reorderSettings = DB::table('product_reorder_settings')
+            ->where('product_id', $id)
+            ->first();
+
         return view('products.show', [
             'product' => $product,
             'movements' => $movements,
             'recommendation' => $latestRecommendation,
+            'settings' => $reorderSettings,
         ]);
     }
 
@@ -139,7 +145,7 @@ class ProductController extends Controller
             'name' => 'required|max:150',
             'unit' => 'required|max:30',
             'purchase_price' => 'required|numeric|min:0|max:9999999999999.99',
-            'selling_price' => 'required|numeric|min:0|max:9999999999999.99',
+            'selling_price' => 'nullable|numeric|min:0|max:9999999999999.99',
             'description' => 'nullable|max:255',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'status' => 'nullable|in:0,1',
@@ -175,7 +181,7 @@ class ProductController extends Controller
                 'name' => $validated['name'],
                 'unit' => $validated['unit'],
                 'purchase_price' => $validated['purchase_price'],
-                'selling_price' => $validated['selling_price'],
+                'selling_price' => $validated['selling_price'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'image' => $imagePath,
                 'status' => (int) ($validated['status'] ?? 1),
@@ -209,7 +215,7 @@ class ProductController extends Controller
             'name' => 'required|max:150',
             'unit' => 'required|max:30',
             'purchase_price' => 'required|numeric|min:0|max:9999999999999.99',
-            'selling_price' => 'required|numeric|min:0|max:9999999999999.99',
+            'selling_price' => 'nullable|numeric|min:0|max:9999999999999.99',
             'description' => 'nullable|max:255',
             'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'status' => 'nullable|in:0,1',
@@ -241,7 +247,7 @@ class ProductController extends Controller
                 'name' => $validated['name'],
                 'unit' => $validated['unit'],
                 'purchase_price' => $validated['purchase_price'],
-                'selling_price' => $validated['selling_price'],
+                'selling_price' => $validated['selling_price'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'image' => $imagePath,
                 'status' => (int) ($validated['status'] ?? $product->status),

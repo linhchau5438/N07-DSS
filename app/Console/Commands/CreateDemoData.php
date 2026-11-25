@@ -76,7 +76,7 @@ class CreateDemoData extends Command
     private function movement(int $product, int $user, string $type, int $quantity, string $date, int $number, int $index): void
     {
         $id = DB::table('inventory_transactions')->insertGetId([
-            'transaction_code' => "DEMO-N07-{$number}-{$index}", 'type' => $type, 'issue_purpose' => $type === 'export' ? 'sale' : 'receipt',
+            'transaction_code' => "DEMO-N07-{$number}-{$index}", 'type' => $type, 'issue_purpose' => $type === 'export' ? 'consumption' : 'receipt',
             'transaction_date' => $date, 'user_id' => $user, 'total_value' => $quantity * 1000,
             'note' => 'SIMULATED: dữ liệu mô phỏng, không phản ánh kinh doanh thực tế.', 'created_at' => now(), 'updated_at' => now(),
         ]);

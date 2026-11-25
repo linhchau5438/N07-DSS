@@ -72,6 +72,10 @@ class DssCompletionTest extends TestCase
         $r = DB::table('reorder_recommendations')->latest('id')->first();
         $this->post(route('dss.decide', $r->id), ['decision' => 'approved', 'approved_quantity' => 100])->assertSessionHasErrors('decision_note');
         $this->post(route('dss.decide', $r->id), ['decision' => 'approved', 'approved_quantity' => 100, 'decision_note' => 'Dự phòng'])->assertSessionHasNoErrors();
+
+        // Xác nhận đặt hàng thực tế với NCC
+        $this->post(route('dss.order', $r->id), ['ordered_quantity' => 100, 'supplier_name' => 'NCC Ánh Dương'])->assertSessionHasNoErrors();
+
         $payload = ['transaction_date' => now()->toDateString(), 'items' => [['product_id' => $product, 'quantity' => 40, 'reorder_recommendation_id' => $r->id]]];
         $this->post(route('inventory.store', 'import'), $payload)->assertSessionHasNoErrors();
         $latest = DB::table('reorder_recommendations')->latest('id')->first();

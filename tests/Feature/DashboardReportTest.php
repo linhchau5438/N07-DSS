@@ -44,6 +44,41 @@ class DashboardReportTest extends TestCase
             ->assertSee('Chưa đủ dữ liệu');
     }
 
+    public function test_bc04_classifies_dead_stock_excess_stock_and_slow_moving(): void
+    {
+        $this->authenticateStaff();
+        $pDead = $this->createProduct();
+        $this->createMovement($pDead, 'import', now()->subDays(10)->toDateString(), 50);
+
+        $response = $this->get(route('reports.bc04', [
+            'from' => now()->subDays(30)->toDateString(),
+            'to' => now()->toDateString(),
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('BC04 - Báo cáo phân loại hàng tồn dư, chậm luân chuyển & không tiêu thụ');
+        $response->assertSee('Hàng không tiêu thụ (Dead Stock)');
+    }
+
+    public function test_dss_demo_clean_command_safely_removes_demo_data(): void
+    {
+        $adminId = DB::table('users')->insertGetId([
+            'name' => 'Admin User',
+            'email' => 'admin_demo@example.com',
+            'password' => Hash::make('password123'),
+            'role' => 'admin',
+            'is_active' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('dss:demo --days=40')->assertSuccessful();
+        $this->assertTrue(DB::table('products')->where('product_code', 'like', 'DEMO-N07-%')->exists());
+
+        $this->artisan('dss:demo-clean --force')->assertSuccessful();
+        $this->assertFalse(DB::table('products')->where('product_code', 'like', 'DEMO-N07-%')->exists());
+    }
+
     private function authenticateStaff(): void
     {
         DB::table('users')->insert([
