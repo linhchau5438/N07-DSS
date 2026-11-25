@@ -61,6 +61,7 @@
                     @php
                         $st = $rec->status;
                         $badgeMap = [
+                            'no_action' => ['neutral', 'Đã đủ tồn'],
                             'pending' => ['warning', 'Chờ duyệt'],
                             'approved' => ['info', 'Đã duyệt (Chờ đặt)'],
                             'ordered' => ['info', 'Đã đặt NCC (Đang về)'],

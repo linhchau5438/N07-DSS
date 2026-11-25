@@ -38,9 +38,16 @@
             {{-- Cột trái: Thông tin sản phẩm --}}
             <div class="lg:col-span-2 bg-surface-container-low/40 rounded-2xl p-6 border border-surface-container-high/60 flex flex-col md:flex-row gap-6">
                 <div class="w-36 h-36 rounded-2xl bg-white border border-surface-container-high/60 overflow-hidden flex items-center justify-center shrink-0">
-                    <img class="w-full h-full object-cover"
-                         src="{{ $product->image ? asset('storage/'.$product->image) : asset('images/product-placeholder.svg') }}"
-                         alt="{{ $product->name }}">
+                    @if($product->image && file_exists(public_path('storage/'.$product->image)))
+                        <img class="w-full h-full object-cover"
+                             src="{{ asset('storage/'.$product->image) }}"
+                             alt="{{ $product->name }}">
+                    @else
+                        <div class="w-full h-full flex flex-col items-center justify-center bg-surface-container-low text-on-surface-variant gap-1 p-2 text-center">
+                            <span class="material-symbols-outlined text-[40px] text-neutral-400">inventory_2</span>
+                            <span class="text-[10px] text-neutral-400 font-medium">Chưa có ảnh</span>
+                        </div>
+                    @endif
                 </div>
                 <div class="flex-1 space-y-4 min-w-0">
                     <div class="space-y-1">
@@ -70,19 +77,19 @@
                     <div class="grid grid-cols-2 gap-3 text-xs">
                         <div class="p-3 rounded-xl bg-white border border-surface-container-high/60">
                             <span class="text-on-surface-variant block text-[11px]">Tồn hiện tại</span>
-                            <strong class="text-base {{ $product->on_hand <= 0 ? 'text-error' : 'text-on-surface' }}">{{ $product->on_hand }} {{ $product->unit }}</strong>
+                            <strong class="text-base {{ $product->on_hand <= 0 ? 'text-error' : 'text-on-surface' }}">{{ (float)$product->on_hand }} {{ $product->unit }}</strong>
                         </div>
                         <div class="p-3 rounded-xl bg-white border border-surface-container-high/60">
                             <span class="text-on-surface-variant block text-[11px]">Tồn an toàn</span>
-                            <strong class="text-base text-on-surface">{{ $recommendation->safety_stock ?? '—' }} {{ $recommendation ? $product->unit : '' }}</strong>
+                            <strong class="text-base text-on-surface">{{ isset($recommendation->safety_stock) ? (float)$recommendation->safety_stock : '—' }} {{ $recommendation ? $product->unit : '' }}</strong>
                         </div>
                         <div class="p-3 rounded-xl bg-white border border-surface-container-high/60">
                             <span class="text-on-surface-variant block text-[11px]">Điểm đặt lại</span>
-                            <strong class="text-base text-on-surface">{{ $recommendation->reorder_point ?? '—' }} {{ $recommendation ? $product->unit : '' }}</strong>
+                            <strong class="text-base text-on-surface">{{ isset($recommendation->reorder_point) ? (float)$recommendation->reorder_point : '—' }} {{ $recommendation ? $product->unit : '' }}</strong>
                         </div>
                         <div class="p-3 rounded-xl bg-white border border-surface-container-high/60">
                             <span class="text-on-surface-variant block text-[11px]">Gợi ý bổ sung</span>
-                            <strong class="text-base text-on-surface">{{ $recommendation->suggested_quantity ?? '—' }} {{ $recommendation ? $product->unit : '' }}</strong>
+                            <strong class="text-base text-on-surface">{{ isset($recommendation->suggested_quantity) ? (float)$recommendation->suggested_quantity : '—' }} {{ $recommendation ? $product->unit : '' }}</strong>
                         </div>
                     </div>
                 </div>

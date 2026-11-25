@@ -60,11 +60,15 @@
                             'CANCEL_REORDER_RECOMMENDATION', 'REORDER_CANCEL' => 'Hủy đơn hàng',
                             'SYNC_ACTUAL_LEAD_TIME' => 'Đồng bộ Lead Time thực tế',
                             'REVIEW_ISSUE_PURPOSE', 'REVIEW_PURPOSE' => 'Rà soát mục đích xuất kho',
+                            'CONFIRM_IMPORT' => 'Xác nhận nhập kho',
+                            'CONFIRM_EXPORT' => 'Xác nhận xuất kho',
+                            'CONFIGURE_DSS_TEST' => 'Khởi tạo cấu hình DSS',
                             default => $log->action
                         };
                         $actionVariant = match($log->action) {
-                            'REORDER_DECISION' => 'success',
-                            'CONFIRM_PURCHASE_ORDER', 'REORDER_CONFIRM_ORDER' => 'info',
+                            'REORDER_DECISION', 'CONFIRM_IMPORT' => 'success',
+                            'CONFIRM_PURCHASE_ORDER', 'REORDER_CONFIRM_ORDER', 'CONFIGURE_DSS_TEST' => 'info',
+                            'CONFIRM_EXPORT' => 'warning',
                             'CANCEL_REORDER_RECOMMENDATION', 'REORDER_CANCEL' => 'danger',
                             default => 'neutral'
                         };
