@@ -1,567 +1,324 @@
+{{--
+    Đường dẫn: resources/views/dss/index.blade.php
+    Mô tả: Giao diện Đề xuất nhập hàng DSS (Decision Support System) theo Monochrome Design System chuẩn N07, tích hợp đầy đủ quy trình phê duyệt, đặt hàng NCC và theo dõi giao hàng.
+    Phụ thuộc: ReorderController@index, layouts/app.blade.php, components/ui/*.
+--}}
 @extends('layouts.app')
 
-@section('title', 'Đề xuất bổ sung hàng')
-
-@section('breadcrumbs')
-    <span class="sep">/</span>
-    <span class="current">Đề xuất nhập hàng (DSS)</span>
-@endsection
+@section('title', 'Đề xuất nhập hàng (DSS)')
+@section('page-title', 'Phân tích và đề xuất nhập hàng')
+@section('page-subtitle', 'Kiểm tra căn cứ, quyết định lượng nhập và theo dõi hàng đang về.')
 
 @section('content')
-<div class="page-heading">
-    <div>
-        <h2>Hỗ trợ ra quyết định nhập hàng (DSS)</h2>
-        <p>Phân tích mức tiêu thụ, phát hiện nguy cơ thiếu hàng và theo dõi tiến độ đặt hàng thực tế với nhà cung cấp.</p>
-    </div>
-    <div class="page-actions">
-        <form action="{{ route('dss.generate') }}" method="POST" style="display:inline">
-            @csrf
-            <input type="hidden" name="period_days" value="30">
-            <button type="submit" class="btn btn-secondary">
-                🔄 Cập nhật tính toán mới
+<div class="space-y-6">
+
+    {{-- ========================================================================= --}}
+    {{-- KHUNG 1: HEADER DÙNG x-ui.page-header                                     --}}
+    {{-- ========================================================================= --}}
+    <x-ui.page-header title="Phân tích và đề xuất nhập hàng"
+                      chip="Hệ thống hỗ trợ ra quyết định (DSS)"
+                      subtitle="Kiểm tra căn cứ định lượng, phê duyệt đề xuất bổ sung kho và theo dõi tiến độ các lô hàng đang về.">
+        <x-slot:actions>
+            <a href="{{ route('dss.history') }}"
+               class="h-10 px-4 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors font-label-lg text-xs font-semibold inline-flex items-center gap-2 border border-surface-container-high/70 shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">history</span>
+                <span>Lịch sử quyết định DSS</span>
+            </a>
+
+            <form action="{{ route('dss.generate') }}" method="POST" class="inline-flex">
+                @csrf
+                <input type="hidden" name="period_days" value="30">
+                <button type="submit"
+                        class="h-10 px-4 rounded-xl bg-primary text-white hover:bg-neutral-800 transition-colors font-label-lg text-xs font-semibold inline-flex items-center gap-2 shadow-sm cursor-pointer">
+                    <span class="material-symbols-outlined text-[18px] text-white">sync</span>
+                    <span class="text-white">Cập nhật tính toán mới</span>
+                </button>
+            </form>
+        </x-slot:actions>
+    </x-ui.page-header>
+
+    {{-- ========================================================================= --}}
+    {{-- KHUNG 2: KHÔNG GIAN DỮ LIỆU TỔNG THỂ DÙNG x-ui.section-card                --}}
+    {{-- ========================================================================= --}}
+    <x-ui.section-card spacing="space-y-6">
+
+        {{-- 1. BANNER CÔNG THỨC & NGUYÊN TẮC DSS --}}
+        <x-ui.banner-hint icon="psychology"
+                          title="Căn cứ tính toán và nguyên tắc vận hành DSS"
+                          message="MA dùng các ngày đã kết thúc. Chỉ xuất bán/tiêu thụ được tính là nhu cầu. Vị thế tồn (IP) = Tồn kho thực tế + Hàng đang về. Hệ thống chỉ đề xuất bổ sung khi IP ≤ Điểm đặt lại (ROP). Đề xuất chỉ mang tính hỗ trợ ra quyết định, không tự động sinh đơn mua hàng nếu chưa được phê duyệt.">
+            <x-slot:action>
+                <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-900 border border-amber-500/30 font-mono text-[11px] font-bold">
+                    Hỗ trợ quyết định · Không tự tạo phiếu
+                </span>
+            </x-slot:action>
+        </x-ui.banner-hint>
+
+        {{-- 2. DẢI 4 THẺ CHỈ SỐ KPI DSS --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <x-ui.kpi-card label="Đề xuất chờ duyệt"
+                           :value="$pendingCount"
+                           unit="mặt hàng"
+                           icon="notification_important"
+                           tone="sage"
+                           :pill="$pendingCount > 0 ? 'Cần duyệt' : 'Đầy đủ'"
+                           :status="$pendingCount > 0 ? 'warning' : 'neutral'">
+                <span class="truncate">Vị thế tồn kho (IP) ≤ ROP</span>
+            </x-ui.kpi-card>
+
+            <x-ui.kpi-card label="Chờ đặt hàng NCC"
+                           :value="$approvedOrders->count()"
+                           unit="lô"
+                           icon="pending_actions"
+                           tone="grey"
+                           :pill="$approvedOrders->count() > 0 ? 'Chờ đặt' : null"
+                           :status="$approvedOrders->count() > 0 ? 'warning' : 'neutral'">
+                <span class="truncate">Admin đã duyệt, chờ liên hệ NCC</span>
+            </x-ui.kpi-card>
+
+            <x-ui.kpi-card label="Lô hàng đang về (On Order)"
+                           :value="$openOrders->count()"
+                           unit="lô"
+                           icon="local_shipping"
+                           tone="sage"
+                           :pill="$openOrders->count() > 0 ? 'Đang giao' : null"
+                           status="success">
+                <span class="truncate">Đã chốt đơn NCC, chờ nhập kho</span>
+            </x-ui.kpi-card>
+
+            <x-ui.kpi-card label="Mặt hàng theo dõi"
+                           :value="$products->total()"
+                           unit="mã"
+                           icon="inventory_2"
+                           tone="grey">
+                <span class="truncate">Cập nhật: {{ $lastCalculatedAt ? \Illuminate\Support\Carbon::parse($lastCalculatedAt)->format('H:i d/m') : 'Mới nhất' }}</span>
+            </x-ui.kpi-card>
+        </div>
+
+        {{-- 3. THANH TAB WORKFLOW --}}
+        <div class="flex items-center gap-2 border-b border-surface-container-high/60 pb-3 flex-wrap">
+            <button type="button" onclick="switchDssTab(this, 'pane-pending')"
+                    class="dss-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2 bg-[#1A4D38] text-white shadow-sm cursor-pointer">
+                <span class="material-symbols-outlined text-[17px]">bolt</span>
+                <span>Cần xem xét duyệt</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/20 text-white">{{ $pendingCount }}</span>
             </button>
-        </form>
-        <a href="{{ route('dss.history') }}" class="btn btn-secondary">
-            📜 Lịch sử quyết định DSS
-        </a>
-    </div>
-</div>
 
-<!-- Workflow Tabs -->
-<div class="saas-tabs" id="dss-tabs">
-    <button type="button" class="saas-tab active" onclick="switchDssTab(event, 'pane-pending')">
-        ⚡ Cần xem xét duyệt
-        <span class="tab-badge" style="background:var(--warning-bg);color:var(--warning)">{{ $pendingCount }}</span>
-    </button>
-    <button type="button" class="saas-tab" onclick="switchDssTab(event, 'pane-approved')">
-        📋 Đã duyệt, chờ đặt hàng NCC
-        <span class="tab-badge" style="background:var(--primary-subtle);color:var(--primary)">{{ $approvedOrders->count() }}</span>
-    </button>
-    <button type="button" class="saas-tab" onclick="switchDssTab(event, 'pane-ordered')">
-        🚚 Đang chờ NCC giao hàng
-        <span class="tab-badge">{{ $openOrders->count() }}</span>
-    </button>
-    <button type="button" class="saas-tab" onclick="switchDssTab(event, 'pane-all')">
-        📦 Tất cả mặt hàng & Trạng thái tồn
-        <span class="tab-badge">{{ $products->total() }}</span>
-    </button>
-</div>
+            <button type="button" onclick="switchDssTab(this, 'pane-approved')"
+                    class="dss-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2 bg-surface-container-low text-on-surface hover:bg-surface-container cursor-pointer">
+                <span class="material-symbols-outlined text-[17px]">fact_check</span>
+                <span>Đã duyệt, chờ đặt hàng</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white text-on-surface border border-surface-container-high/60">{{ $approvedOrders->count() }}</span>
+            </button>
 
-<!-- ==============================================================
-     TAB 1: CẦN XEM XÉT DUYỆT (PENDING RECOMMENDATIONS)
-     ============================================================== -->
-<div id="pane-pending" class="dss-pane">
-    @php
-        $pendingProducts = collect($products->items())->filter(function($p) {
-            return $p->recommendation_status === 'pending' && $p->suggested_quantity > 0;
-        });
-    @endphp
+            <button type="button" onclick="switchDssTab(this, 'pane-ordered')"
+                    class="dss-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2 bg-surface-container-low text-on-surface hover:bg-surface-container cursor-pointer">
+                <span class="material-symbols-outlined text-[17px]">local_shipping</span>
+                <span>Đang chờ NCC giao hàng</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white text-on-surface border border-surface-container-high/60">{{ $openOrders->count() }}</span>
+            </button>
 
-    @if($pendingProducts->count() > 0)
-        <div class="card" style="padding:0;overflow:hidden">
-            <div style="padding:14px 20px;background:var(--warning-bg);border-bottom:1px solid var(--warning-border);display:flex;align-items:center;justify-content:space-between">
-                <div>
-                    <strong style="color:var(--warning);font-size:13px">Có {{ $pendingProducts->count() }} mặt hàng vị thế tồn kho (IP) rơi dưới ngưỡng đặt hàng lại (ROP)</strong>
-                    <div style="font-size:11px;color:#92400e;margin-top:2px">Admin xem xét căn cứ nhu cầu và phê duyệt số lượng nhập phù hợp.</div>
+            <button type="button" onclick="switchDssTab(this, 'pane-all')"
+                    class="dss-tab-btn px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-2 bg-surface-container-low text-on-surface hover:bg-surface-container cursor-pointer">
+                <span class="material-symbols-outlined text-[17px]">grid_view</span>
+                <span>Tất cả mặt hàng</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white text-on-surface border border-surface-container-high/60">{{ $products->total() }}</span>
+            </button>
+        </div>
+
+        {{-- TAB PANE 1: CẦN DUYỆT --}}
+        <div id="pane-pending" class="dss-tab-pane space-y-4">
+            @php
+                $pendingProducts = collect($products->items())->filter(function($p) {
+                    return $p->recommendation_status === 'pending' && $p->suggested_quantity > 0;
+                });
+            @endphp
+
+            @if($pendingProducts->isNotEmpty())
+                <div class="space-y-4">
+                    @foreach($pendingProducts as $product)
+                        <x-ui.dss-suggestion-card :product="$product" :isAdmin="auth()->user()->role === 'admin'" />
+                    @endforeach
                 </div>
-            </div>
+            @else
+                <x-ui.empty-state icon="verified"
+                                  title="Không có mặt hàng nào cần duyệt gấp"
+                                  message="Vị thế tồn kho (IP) của toàn bộ mặt hàng đang ở mức an toàn trên ngưỡng ROP." />
+            @endif
+        </div>
 
-            <div class="table-wrap" style="border:none">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Mã SKU / Sản phẩm</th>
-                            <th class="text-right">Tồn thực tế</th>
-                            <th class="text-right">Hàng đang về</th>
-                            <th class="text-right">Vị thế tồn (IP)</th>
-                            <th class="text-right">Ngưỡng ROP</th>
-                            <th class="text-right" style="color:var(--primary)">Lượng đề xuất (Q)</th>
-                            <th>Đặc điểm phân tích</th>
-                            <th class="text-right">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($pendingProducts as $p)
-                            @php
-                                $snapshot = json_decode($p->calculation_snapshot ?? '{}', true) ?: [];
-                                $stockout = $snapshot['stockout_analysis'] ?? [];
-                                $actualLt = $snapshot['actual_lead_time'] ?? [];
-                                $fallbackApplied = !empty($snapshot['safety_fallback_applied']);
-                            @endphp
-                            <tr>
-                                <td>
-                                    <div class="product-cell">
-                                        <div>
-                                            <a href="{{ route('products.show', $p->id) }}" class="product-title" style="color:var(--primary)">
-                                                {{ $p->name }}
-                                            </a>
-                                            <span class="product-meta">SKU: <strong>{{ $p->product_code }}</strong> ({{ $p->unit }}) · {{ $p->category_name }}</span>
+        {{-- TAB PANE 2: ĐÃ DUYỆT, CHỜ ĐẶT HÀNG NCC --}}
+        <div id="pane-approved" class="dss-tab-pane space-y-4 hidden">
+            @if($approvedOrders->isNotEmpty())
+                <x-ui.data-table minWidth="min-w-[950px]">
+                    <x-slot:head>
+                        <th class="py-3.5 pl-6 pr-2 min-w-[200px]">Sản phẩm & SKU</th>
+                        <th class="py-3.5 px-4 text-right min-w-[120px]">Q Đề xuất</th>
+                        <th class="py-3.5 px-4 text-right min-w-[120px]">Q Admin duyệt</th>
+                        <th class="py-3.5 px-4 min-w-[180px]">Ghi chú duyệt</th>
+                        <th class="py-3.5 pr-6 pl-4 text-right min-w-[220px]">Thao tác xác nhận đặt hàng</th>
+                    </x-slot:head>
+
+                    @foreach($approvedOrders as $item)
+                        <tr class="hover:bg-surface-container-low/70 transition-colors h-[72px]">
+                            <td class="py-4 pl-6 pr-2">
+                                <span class="font-bold text-sm text-on-surface block">{{ $item->name }}</span>
+                                <span class="font-mono text-xs text-on-surface-variant">{{ $item->product_code }} · {{ $item->unit }}</span>
+                            </td>
+                            <td class="py-4 px-4 text-right font-mono text-sm text-on-surface-variant">
+                                {{ number_format($item->suggested_quantity) }} {{ $item->unit }}
+                            </td>
+                            <td class="py-4 px-4 text-right font-mono font-bold text-sm text-secondary">
+                                {{ number_format($item->approved_quantity) }} {{ $item->unit }}
+                            </td>
+                            <td class="py-4 px-4 text-xs text-on-surface-variant">
+                                {{ $item->decision_note ?: '—' }}
+                            </td>
+                            <td class="py-4 pr-6 pl-4 text-right">
+                                <details class="inline-block text-left">
+                                    <summary class="h-9 px-3.5 rounded-xl bg-primary text-white hover:bg-neutral-800 transition-colors text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer select-none">
+                                        <span class="material-symbols-outlined text-[16px]">shopping_cart</span>
+                                        <span>Đặt hàng NCC</span>
+                                    </summary>
+                                    <div class="fixed inset-0 bg-neutral-900/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.closest('details').removeAttribute('open')">
+                                        <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl border border-surface-container-high space-y-4" onclick="event.stopPropagation()">
+                                            <div class="flex items-center justify-between pb-3 border-b border-surface-container-high/60">
+                                                <h3 class="font-headline-sm text-sm font-bold text-on-surface">Xác nhận đặt hàng NCC: {{ $item->name }}</h3>
+                                                <button type="button" onclick="this.closest('details').removeAttribute('open')" class="text-on-surface-variant hover:text-on-surface">✕</button>
+                                            </div>
+                                            <form action="{{ route('dss.order', $item->id) }}" method="POST" class="space-y-3 text-xs">
+                                                @csrf
+                                                <div>
+                                                    <label class="block font-bold mb-1">Số lượng đặt thực tế với NCC *</label>
+                                                    <input type="number" name="ordered_quantity" min="1" max="{{ $item->approved_quantity }}" value="{{ $item->approved_quantity }}" required
+                                                           class="w-full h-10 px-3 rounded-xl bg-surface-container-low border border-surface-container-high text-xs font-mono font-bold">
+                                                    <p class="text-[11px] text-on-surface-variant mt-0.5">Tối đa theo số lượng Admin đã duyệt: {{ $item->approved_quantity }} {{ $item->unit }}</p>
+                                                </div>
+                                                <div>
+                                                    <label class="block font-bold mb-1">Tên nhà cung cấp</label>
+                                                    <input type="text" name="supplier_name" placeholder="Ví dụ: Công ty TNHH Bia Nước giải khát..."
+                                                           class="w-full h-10 px-3 rounded-xl bg-surface-container-low border border-surface-container-high text-xs">
+                                                </div>
+                                                <div>
+                                                    <label class="block font-bold mb-1">Ngày dự kiến giao hàng</label>
+                                                    <input type="date" name="expected_delivery_date" min="{{ now()->toDateString() }}"
+                                                           class="w-full h-10 px-3 rounded-xl bg-surface-container-low border border-surface-container-high text-xs font-mono">
+                                                </div>
+                                                <div>
+                                                    <label class="block font-bold mb-1">Ghi chú đơn đặt hàng</label>
+                                                    <textarea name="order_note" rows="2" placeholder="Số đơn, liên hệ người giao hàng..."
+                                                              class="w-full p-3 rounded-xl bg-surface-container-low border border-surface-container-high text-xs"></textarea>
+                                                </div>
+                                                <div class="flex justify-end gap-2 pt-2">
+                                                    <button type="button" onclick="this.closest('details').removeAttribute('open')" class="px-4 py-2 rounded-xl text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low">Hủy</button>
+                                                    <button type="submit" class="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-neutral-800 shadow-sm">Xác nhận đơn đặt hàng</button>
+                                                </div>
+                                            </form>
                                         </div>
                                     </div>
-                                </td>
-                                <td class="text-right">
-                                    <strong class="{{ $p->current_on_hand <= 0 ? 'text-danger' : '' }}">
-                                        {{ number_format($p->current_on_hand) }}
-                                    </strong>
-                                    <small class="text-muted">{{ $p->unit }}</small>
-                                </td>
-                                <td class="text-right">
-                                    {{ ($p->on_order ?? 0) > 0 ? '+' . number_format($p->on_order) : '0' }}
-                                </td>
-                                <td class="text-right">
-                                    <strong>{{ number_format($p->inventory_position ?? $p->current_on_hand) }}</strong>
-                                </td>
-                                <td class="text-right">
-                                    {{ number_format($p->reorder_point, 1) }}
-                                </td>
-                                <td class="text-right" style="font-size:14px;color:var(--primary)">
-                                    <strong>{{ number_format($p->suggested_quantity) }}</strong>
-                                    <small style="font-size:11px;color:var(--text-muted)">{{ $p->unit }}</small>
-                                </td>
-                                <td>
-                                    <div style="display:flex;flex-wrap:wrap;gap:4px">
-                                        @if($fallbackApplied)
-                                            <span class="badge badge-warning" title="Kích hoạt đệm an toàn cơ sở 15% do phương sai nhu cầu xấp xỉ 0">
-                                                🛡️ Fallback SS (15%)
-                                            </span>
-                                        @endif
-                                        @if(!empty($stockout['is_censored']))
-                                            <span class="badge badge-danger" title="Méo nhu cầu do đứt hàng {{ $stockout['stockout_days'] }} ngày">
-                                                ⚠️ Đứt hàng ({{ $stockout['stockout_days'] }} ngày)
-                                            </span>
-                                        @endif
-                                        @if(!empty($actualLt['has_history']) && (int)$actualLt['avg_lead_time_days'] !== (int)$p->lead_time_days)
-                                            <span class="badge badge-info" title="Thời gian giao hàng thực tế ({{ $actualLt['avg_lead_time_days'] }} ngày) lệch kế hoạch ({{ $p->lead_time_days }} ngày)">
-                                                ⏱️ Giao TB {{ $actualLt['avg_lead_time_days'] }} ngày
-                                            </span>
-                                        @endif
-                                    </div>
-                                </td>
-                                <td class="text-right">
-                                    <button type="button" class="btn btn-sm btn-warn" onclick="openDecisionModal('modal-decide-{{ $p->id }}')">
-                                        Xem căn cứ & Duyệt →
-                                    </button>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    @else
-        <div class="card empty-state">
-            <span class="empty-icon">✅</span>
-            <div class="empty-title">Không có mặt hàng nào cần duyệt nhập lúc này</div>
-            <p class="empty-desc">Tất cả các sản phẩm đều đang có lượng tồn kho hoặc hàng đang về nằm trên mức an toàn (IP > ROP).</p>
-        </div>
-    @endif
-</div>
-
-<!-- ==============================================================
-     TAB 2: ĐÃ DUYỆT, CHỜ ĐẶT HÀNG NCC (APPROVED ORDERS)
-     ============================================================== -->
-<div id="pane-approved" class="dss-pane" style="display:none">
-    @if($approvedOrders->count() > 0)
-        <div class="card" style="padding:0;overflow:hidden">
-            <div style="padding:14px 20px;background:var(--primary-subtle);border-bottom:1px solid var(--primary-border);display:flex;align-items:center;justify-content:space-between">
-                <div>
-                    <strong style="color:var(--primary-text);font-size:13px">Có {{ $approvedOrders->count() }} đề xuất đã được Admin phê duyệt, chờ đặt hàng với Nhà cung cấp</strong>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Sau khi liên hệ NCC và chốt hợp đồng/đơn hàng, thực hiện "Xác nhận đặt hàng" để ghi nhận hàng đang về (On Order).</div>
-                </div>
-            </div>
-
-            <div class="table-wrap" style="border:none">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width:80px">Mã đề xuất</th>
-                            <th>Sản phẩm / SKU</th>
-                            <th class="text-right">Số lượng đề xuất</th>
-                            <th class="text-right" style="color:var(--primary)">Số lượng đã duyệt</th>
-                            <th>Ghi chú của Admin</th>
-                            <th class="text-right">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($approvedOrders as $ao)
-                            <tr>
-                                <td><span class="badge badge-muted">#{{ $ao->id }}</span></td>
-                                <td>
-                                    <strong style="color:var(--text-main)">{{ $ao->name }}</strong>
-                                    <span class="product-meta">SKU: {{ $ao->product_code }} ({{ $ao->unit }})</span>
-                                </td>
-                                <td class="text-right text-muted">{{ number_format($ao->suggested_quantity) }} {{ $ao->unit }}</td>
-                                <td class="text-right" style="font-size:14px;color:var(--primary)">
-                                    <strong>{{ number_format($ao->approved_quantity) }}</strong> {{ $ao->unit }}
-                                </td>
-                                <td class="text-muted" style="max-width:280px">
-                                    {{ $ao->decision_note ?: 'Duyệt theo đề xuất DSS.' }}
-                                </td>
-                                <td class="text-right">
-                                    <button type="button" class="btn btn-sm" onclick="openOrderModal('modal-order-{{ $ao->id }}')">
-                                        📞 Xác nhận đặt hàng NCC →
-                                    </button>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    @else
-        <div class="card empty-state">
-            <span class="empty-icon">📋</span>
-            <div class="empty-title">Không có đơn hàng nào đang chờ đặt</div>
-            <p class="empty-desc">Tất cả đề xuất đã duyệt đều đã được chuyển thành đơn đặt hàng thực tế với nhà cung cấp.</p>
-        </div>
-    @endif
-</div>
-
-<!-- ==============================================================
-     TAB 3: ĐANG CHỜ NCC GIAO HÀNG (OPEN ORDERS - ON ORDER)
-     ============================================================== -->
-<div id="pane-ordered" class="dss-pane" style="display:none">
-    @if($openOrders->count() > 0)
-        <div class="card" style="padding:0;overflow:hidden">
-            <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-                <div>
-                    <h3 class="card-title">Tiến độ đơn hàng nhà cung cấp đang giao (Hàng đang về - On Order)</h3>
-                    <div class="card-subtitle">Hàng đang trên đường vận chuyển, tính vào vị thế tồn kho (IP) để tránh đặt trùng lặp</div>
-                </div>
-            </div>
-
-            <div class="table-wrap" style="border:none">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width:80px">Mã đề xuất</th>
-                            <th>Sản phẩm / SKU</th>
-                            <th>Nhà cung cấp</th>
-                            <th>Hẹn giao dự kiến</th>
-                            <th class="text-right">Đã đặt NCC</th>
-                            <th class="text-right">Đã nhận kho</th>
-                            <th class="text-right">Còn phải nhận</th>
-                            <th class="text-right">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($openOrders as $oo)
-                            <tr>
-                                <td><span class="badge badge-muted">#{{ $oo->id }}</span></td>
-                                <td>
-                                    <strong style="color:var(--text-main)">{{ $oo->name }}</strong>
-                                    <span class="product-meta">SKU: {{ $oo->product_code }}</span>
-                                </td>
-                                <td>
-                                    <span class="badge badge-info">{{ $oo->supplier_name ?: 'NCC mặc định' }}</span>
-                                </td>
-                                <td class="text-muted">
-                                    {{ $oo->expected_delivery_date ? \Illuminate\Support\Carbon::parse($oo->expected_delivery_date)->format('d/m/Y') : 'Chưa hẹn ngày' }}
-                                </td>
-                                <td class="text-right"><strong>{{ number_format($oo->ordered_quantity) }}</strong> {{ $oo->unit }}</td>
-                                <td class="text-right">{{ number_format($oo->received_quantity) }} {{ $oo->unit }}</td>
-                                <td class="text-right font-mono" style="color:var(--warning)">
-                                    <strong>{{ number_format($oo->ordered_quantity - $oo->received_quantity) }}</strong> {{ $oo->unit }}
-                                </td>
-                                <td class="text-right">
-                                    <div style="display:inline-flex;gap:4px">
-                                        <a href="{{ route('inventory.create', ['type' => 'import', 'recommendation_id' => $oo->id]) }}" class="btn btn-sm">
-                                            📥 Nhập kho theo đơn
-                                        </a>
-                                        <form action="{{ route('dss.cancel', $oo->id) }}" method="POST" style="display:inline"
-                                              onsubmit="return confirm('Hủy phần đơn hàng còn lại này? Số lượng chưa nhận sẽ được trừ khỏi On Order và IP.')">
-                                            @csrf
-                                            <input type="hidden" name="reason" value="Hủy đơn do nhà cung cấp không thể giao tiếp">
-                                            <button type="submit" class="btn btn-sm btn-quiet" style="color:var(--danger)">
-                                                Hủy phần còn lại
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    @else
-        <div class="card empty-state">
-            <span class="empty-icon">🚚</span>
-            <div class="empty-title">Không có đơn hàng nào đang trên đường vận chuyển</div>
-            <p class="empty-desc">Kho hiện không có đơn hàng nhà cung cấp đang chờ giao.</p>
-        </div>
-    @endif
-</div>
-
-<!-- ==============================================================
-     TAB 4: TẤT CẢ MẶT HÀNG & TRẠNG THÁI TỒN
-     ============================================================== -->
-<div id="pane-all" class="dss-pane" style="display:none">
-    <div class="card" style="padding:0;overflow:hidden">
-        <div class="table-wrap" style="border:none">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Mặt hàng / SKU</th>
-                        <th class="text-right">Tồn thực tế</th>
-                        <th class="text-right">Hàng đang về</th>
-                        <th class="text-right">Vị thế tồn (IP)</th>
-                        <th class="text-right">Tồn an toàn (SS)</th>
-                        <th class="text-right">Ngưỡng ROP</th>
-                        <th class="text-right">Lượng đề xuất (Q)</th>
-                        <th class="text-center">Trạng thái đề xuất</th>
-                        <th class="text-right">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($products as $p)
-                        <tr>
-                            <td>
-                                <div>
-                                    <a href="{{ route('products.show', $p->id) }}" class="product-title" style="color:var(--primary)">
-                                        {{ $p->name }}
-                                    </a>
-                                    <span class="product-meta">SKU: {{ $p->product_code }} ({{ $p->unit }})</span>
-                                </div>
-                            </td>
-                            <td class="text-right">{{ number_format($p->current_on_hand) }}</td>
-                            <td class="text-right">{{ ($p->on_order ?? 0) > 0 ? '+' . number_format($p->on_order) : '0' }}</td>
-                            <td class="text-right"><strong>{{ number_format($p->inventory_position ?? $p->current_on_hand) }}</strong></td>
-                            <td class="text-right">{{ $p->safety_stock !== null ? number_format($p->safety_stock, 1) : '—' }}</td>
-                            <td class="text-right">{{ $p->reorder_point !== null ? number_format($p->reorder_point, 1) : '—' }}</td>
-                            <td class="text-right">
-                                @if(($p->suggested_quantity ?? 0) > 0)
-                                    <strong style="color:var(--primary)">{{ number_format($p->suggested_quantity) }}</strong>
-                                @else
-                                    <span class="text-muted">0</span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                @php
-                                    $st = $p->recommendation_status;
-                                    $badgeClass = match($st) {
-                                        'pending' => 'badge-warning',
-                                        'approved' => 'badge-info',
-                                        'ordered', 'partially_received' => 'badge-primary',
-                                        'fulfilled' => 'badge-success',
-                                        'rejected', 'cancelled' => 'badge-danger',
-                                        default => 'badge-muted'
-                                    };
-                                    $badgeText = match($st) {
-                                        'pending' => 'Chờ Admin duyệt',
-                                        'approved' => 'Đã duyệt (Chờ đặt NCC)',
-                                        'ordered' => 'Đang chờ NCC giao',
-                                        'partially_received' => 'Đã nhận 1 phần',
-                                        'fulfilled' => 'Đã nhận đủ',
-                                        'rejected' => 'Từ chối',
-                                        'cancelled' => 'Đã hủy',
-                                        'insufficient_data' => 'Thiếu dữ liệu',
-                                        'missing_config' => 'Chưa cấu hình',
-                                        default => 'Bình thường'
-                                    };
-                                @endphp
-                                <span class="badge {{ $badgeClass }}">{{ $badgeText }}</span>
-                            </td>
-                            <td class="text-right">
-                                <a href="{{ route('products.show', $p->id) }}#tab-dss" class="btn btn-sm btn-secondary" title="Xem hoặc chỉnh sửa tham số">
-                                    ⚙️ Thông số
-                                </a>
+                                </details>
                             </td>
                         </tr>
                     @endforeach
-                </tbody>
-            </table>
+                </x-ui.data-table>
+            @else
+                <x-ui.empty-state icon="fact_check"
+                                  title="Không có đề xuất nào đang chờ đặt hàng"
+                                  message="Các đề xuất sau khi được Admin phê duyệt sẽ hiển thị tại đây để nhân viên kho liên hệ NCC." />
+            @endif
         </div>
-        @if($products->hasPages())
-            <div style="padding:12px 16px;border-top:1px solid var(--border-light)">
+
+        {{-- TAB PANE 3: ĐANG CHỜ NCC GIAO HÀNG --}}
+        <div id="pane-ordered" class="dss-tab-pane space-y-4 hidden">
+            @if($openOrders->isNotEmpty())
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    @foreach($openOrders as $order)
+                        <div class="p-5 rounded-2xl bg-surface-container-lowest border border-surface-container-high/60 shadow-sm flex flex-col justify-between gap-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-200">
+                                        {{ mb_substr($order->product_code, 0, 2) }}
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-on-surface">{{ $order->name }}</h4>
+                                        <p class="font-mono text-xs text-on-surface-variant">{{ $order->product_code }} · {{ $order->supplier_name ?: 'Chưa ghi NCC' }}</p>
+                                    </div>
+                                </div>
+                                <x-ui.status-pill variant="info" :label="$order->status === 'partially_received' ? 'Đã nhận 1 phần' : 'Đang về'" />
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-surface-container-low/70 border border-surface-container-high/60 grid grid-cols-3 gap-2 text-xs font-mono">
+                                <div>
+                                    <span class="text-[10px] text-on-surface-variant block uppercase">Đã đặt</span>
+                                    <strong class="text-sm font-bold">{{ $order->ordered_quantity }} {{ $order->unit }}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-on-surface-variant block uppercase">Đã nhận</span>
+                                    <strong class="text-sm font-bold text-emerald-700">{{ $order->received_quantity }} {{ $order->unit }}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-on-surface-variant block uppercase">Còn lại</span>
+                                    <strong class="text-sm font-bold text-amber-700">{{ $order->ordered_quantity - $order->received_quantity }} {{ $order->unit }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-1">
+                                <span class="text-xs text-on-surface-variant font-mono">
+                                    Dự kiến: {{ $order->expected_delivery_date ? \Illuminate\Support\Carbon::parse($order->expected_delivery_date)->format('d/m/Y') : 'Chưa định ngày' }}
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('inventory.create', ['type' => 'import', 'recommendation_id' => $order->id]) }}"
+                                       class="h-9 px-4 rounded-xl bg-primary text-white hover:bg-neutral-800 transition-colors text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs">
+                                        <span class="material-symbols-outlined text-[16px]">archive</span>
+                                        <span>Tạo phiếu nhập</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <x-ui.empty-state icon="local_shipping"
+                                  title="Không có đơn đặt hàng nào đang chờ giao"
+                                  message="Khi nhân viên kho liên hệ NCC và xác nhận đơn, hàng đang về sẽ hiển thị tại đây." />
+            @endif
+        </div>
+
+        {{-- TAB PANE 4: TẤT CẢ SẢN PHẨM --}}
+        <div id="pane-all" class="dss-tab-pane space-y-4 hidden">
+            <div class="space-y-4">
+                @foreach($products as $product)
+                    <x-ui.dss-suggestion-card :product="$product" :isAdmin="auth()->user()->role === 'admin'" />
+                @endforeach
+            </div>
+
+            <div class="pt-2">
                 {{ $products->links('pagination.n07') }}
             </div>
-        @endif
-    </div>
+        </div>
+
+    </x-ui.section-card>
 </div>
 
-<!-- ==============================================================
-     MODALS FOR REORDER DECISION (MODAL / SLIDE-OVER DRAWER)
-     ============================================================== -->
-@foreach($products as $p)
-    @php
-        $snapshot = json_decode($p->calculation_snapshot ?? '{}', true) ?: [];
-        $stockout = $snapshot['stockout_analysis'] ?? [];
-        $actualLt = $snapshot['actual_lead_time'] ?? [];
-        $fallbackApplied = !empty($snapshot['safety_fallback_applied']);
-    @endphp
-
-    <!-- Modal Xem căn cứ & Duyệt đề xuất -->
-    <div id="modal-decide-{{ $p->id }}" class="modal-backdrop">
-        <div class="modal-box" style="width:min(100%, 640px)">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border)">
-                <div>
-                    <h3 style="font-size:16px;color:var(--text-main)">Phê duyệt đề xuất nhập hàng</h3>
-                    <div style="font-size:11.5px;color:var(--text-muted)">{{ $p->product_code }} — {{ $p->name }}</div>
-                </div>
-                <button type="button" class="btn btn-quiet btn-sm" onclick="closeModal('modal-decide-{{ $p->id }}')">✕</button>
-            </div>
-
-            <!-- Cảnh báo méo nhu cầu nếu có -->
-            @if(!empty($stockout['is_censored']))
-                <div style="background:#fff7ed;padding:12px 14px;border-radius:var(--radius-md);margin:14px 0;border-left:4px solid #f97316;color:#9a3412;font-size:12px">
-                    <strong>⚠️ Cảnh báo méo nhu cầu (Censored Demand):</strong><br>
-                    Sản phẩm hết hàng <strong>{{ $stockout['stockout_days'] }}/{{ $stockout['total_days'] }} ngày</strong> ({{ round($stockout['stockout_ratio'] * 100, 1) }}%).
-                    Nhu cầu thực tế khi có hàng là <strong>{{ $stockout['adjusted_demand'] }} {{ $p->unit }}/ngày</strong> (cao hơn mức ghi nhận {{ $p->average_daily_demand }} {{ $p->unit }}/ngày).
-                    
-                    @if(!empty($snapshot['adjusted_calculation']['quantity']) && (int)$snapshot['adjusted_calculation']['quantity'] > 0)
-                        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #fdba74;display:flex;align-items:center;justify-content:space-between">
-                            <span>💡 Đề xuất hiệu chỉnh bù đắp: <strong>{{ $snapshot['adjusted_calculation']['quantity'] }} {{ $p->unit }}</strong></span>
-                            @if(auth()->user()->role === 'admin')
-                                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('approved-qty-{{ $p->id }}').value='{{ $snapshot['adjusted_calculation']['quantity'] }}';document.getElementById('decision-note-{{ $p->id }}').value='Duyệt số lượng hiệu chỉnh bù đứt hàng (Censored Demand)'">
-                                    Áp dụng số này
-                                </button>
-                            @endif
-                        </div>
-                    @endif
-                </div>
-            @endif
-
-            <!-- Căn cứ tính toán tóm tắt -->
-            <div style="background:var(--bg-subtle);padding:14px;border-radius:var(--radius-md);margin:14px 0;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
-                <div>
-                    <span class="text-muted">Nhu cầu tiêu thụ trung bình (d):</span>
-                    <strong style="display:block">{{ number_format($p->average_daily_demand, 2) }} {{ $p->unit }}/ngày</strong>
-                </div>
-                <div>
-                    <span class="text-muted">Lead Time: Thời gian giao hàng dự kiến (L):</span>
-                    <strong style="display:block">{{ $p->lead_time_days }} ngày</strong>
-                </div>
-                <div>
-                    <span class="text-muted">Tồn kho dự phòng (SS):</span>
-                    <strong style="display:block">{{ number_format($p->safety_stock, 1) }} {{ $p->unit }} @if($fallbackApplied) (🛡️ Fallback SS) @endif</strong>
-                </div>
-                <div>
-                    <span class="text-muted">Ngưỡng đặt hàng lại (ROP):</span>
-                    <strong style="display:block;color:var(--warning)">{{ number_format($p->reorder_point, 1) }} {{ $p->unit }}</strong>
-                </div>
-                <div>
-                    <span class="text-muted">Tồn kho thực tế (On Hand):</span>
-                    <strong style="display:block">{{ number_format($p->current_on_hand) }} {{ $p->unit }}</strong>
-                </div>
-                <div>
-                    <span class="text-muted">Vị thế tồn kho (IP = On Hand + On Order):</span>
-                    <strong style="display:block;color:var(--primary)">{{ number_format($p->inventory_position ?? $p->current_on_hand) }} {{ $p->unit }}</strong>
-                </div>
-            </div>
-
-            <!-- Form phê duyệt của Admin -->
-            @if(auth()->user()->role === 'admin' && $p->recommendation_status === 'pending')
-                <form action="{{ route('dss.decide', $p->recommendation_id ?? 0) }}" method="POST" style="margin-top:16px">
-                    @csrf
-                    <div class="form-grid">
-                        <div class="form-field">
-                            <label for="approved-qty-{{ $p->id }}">Số lượng duyệt nhập ({{ $p->unit }}) *</label>
-                            <input id="approved-qty-{{ $p->id }}" type="number" name="approved_quantity" min="1" max="1000000" required
-                                   value="{{ $p->suggested_quantity }}" style="font-size:14px;font-weight:700;color:var(--primary)">
-                            <span class="form-help">Mặc định điền số lượng đề xuất của hệ thống ({{ $p->suggested_quantity }}).</span>
-                        </div>
-
-                        <div class="form-field">
-                            <label for="decision-note-{{ $p->id }}">Ghi chú phê duyệt / Điều chỉnh</label>
-                            <input id="decision-note-{{ $p->id }}" name="decision_note" maxlength="255"
-                                   placeholder="Lý do điều chỉnh hoặc chỉ đạo đặc biệt...">
-                            <span class="form-help">Lưu vết vào nhật ký để kiểm tra đối soát.</span>
-                        </div>
-                    </div>
-
-                    <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
-                        <button type="submit" name="decision" value="reject" class="btn btn-danger"
-                                onclick="return confirm('Bạn có chắc muốn TỪ CHỐI đề xuất nhập hàng này?')">
-                            ✕ Từ chối đề xuất
-                        </button>
-                        <button type="submit" name="decision" value="approve" class="btn">
-                            ✓ Phê duyệt đề xuất
-                        </button>
-                    </div>
-                </form>
-            @endif
-        </div>
-    </div>
-
-    <!-- Modal Xác nhận đặt hàng NCC (Cho Approved Orders) -->
-    <div id="modal-order-{{ $p->id }}" class="modal-backdrop">
-        <div class="modal-box" style="width:min(100%, 540px)">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border)">
-                <div>
-                    <h3 style="font-size:16px;color:var(--text-main)">Xác nhận đặt hàng với Nhà cung cấp</h3>
-                    <div style="font-size:11.5px;color:var(--text-muted)">{{ $p->product_code }} — {{ $p->name }}</div>
-                </div>
-                <button type="button" class="btn btn-quiet btn-sm" onclick="closeModal('modal-order-{{ $p->id }}')">✕</button>
-            </div>
-
-            <form action="{{ route('dss.order', $p->recommendation_id ?? 0) }}" method="POST" style="margin-top:16px">
-                @csrf
-                <div class="form-grid">
-                    <div class="form-field form-field-full">
-                        <label for="supplier_name_{{ $p->id }}">Tên nhà cung cấp được chọn *</label>
-                        <input id="supplier_name_{{ $p->id }}" name="supplier_name" maxlength="150" required
-                               placeholder="Ví dụ: Công ty TNHH Phân phối ABC, Đại lý XYZ...">
-                    </div>
-
-                    <div class="form-field">
-                        <label for="ordered_qty_{{ $p->id }}">Số lượng đặt thực tế ({{ $p->unit }}) *</label>
-                        <input id="ordered_qty_{{ $p->id }}" type="number" name="ordered_quantity" min="1" max="1000000" required
-                               value="{{ $p->approved_quantity ?: $p->suggested_quantity }}" style="font-weight:700;color:var(--primary)">
-                        <span class="form-help">Số lượng nhà cung cấp đã đồng ý giao.</span>
-                    </div>
-
-                    <div class="form-field">
-                        <label for="exp_date_{{ $p->id }}">Ngày hẹn giao dự kiến</label>
-                        <input id="exp_date_{{ $p->id }}" type="date" name="expected_delivery_date"
-                               min="{{ now()->toDateString() }}">
-                        <span class="form-help">Hạn nhà cung cấp hứa giao hàng.</span>
-                    </div>
-
-                    <div class="form-field form-field-full">
-                        <label for="order_note_{{ $p->id }}">Ghi chú đơn hàng / Số hợp đồng</label>
-                        <input id="order_note_{{ $p->id }}" name="order_note" maxlength="255"
-                               placeholder="Số PO, số điện thoại tài xế hoặc yêu cầu quy cách...">
-                    </div>
-                </div>
-
-                <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-order-{{ $p->id }}')">Hủy bỏ</button>
-                    <button type="submit" class="btn">
-                        📞 Xác nhận đã đặt hàng (Ghi nhận On Order)
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-@endforeach
-
-@push('scripts')
 <script>
-    function switchDssTab(e, paneId) {
-        document.querySelectorAll('#dss-tabs .saas-tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.dss-pane').forEach(p => p.style.display = 'none');
-        e.currentTarget.classList.add('active');
-        document.getElementById(paneId).style.display = 'block';
-    }
-
-    function openDecisionModal(modalId) {
-        document.getElementById(modalId)?.classList.add('is-open');
-    }
-
-    function openOrderModal(modalId) {
-        document.getElementById(modalId)?.classList.add('is-open');
-    }
-
-    function closeModal(modalId) {
-        document.getElementById(modalId)?.classList.remove('is-open');
-    }
-
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal-backdrop')) {
-            e.target.classList.remove('is-open');
+    function switchDssTab(btn, paneId) {
+        document.querySelectorAll('.dss-tab-btn').forEach(b => {
+            b.classList.remove('bg-[#1A4D38]', 'text-white', 'shadow-sm');
+            b.classList.add('bg-surface-container-low', 'text-on-surface');
+            const badge = b.querySelector('span:last-child');
+            if (badge) {
+                badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-white text-on-surface border border-surface-container-high/60';
+            }
+        });
+        btn.classList.remove('bg-surface-container-low', 'text-on-surface');
+        btn.classList.add('bg-[#1A4D38]', 'text-white', 'shadow-sm');
+        const activeBadge = btn.querySelector('span:last-child');
+        if (activeBadge) {
+            activeBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/20 text-white';
         }
-    });
+
+        document.querySelectorAll('.dss-tab-pane').forEach(p => p.classList.add('hidden'));
+        const activePane = document.getElementById(paneId);
+        if (activePane) activePane.classList.remove('hidden');
+    }
 </script>
-@endpush
 @endsection

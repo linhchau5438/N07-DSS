@@ -1,123 +1,135 @@
+{{--
+    Đường dẫn: resources/views/dss/history.blade.php
+    Mô tả: Giao diện Lịch sử quyết định DSS theo Monochrome Design System chuẩn N07.
+    Phụ thuộc: ReorderController@history, layouts/app.blade.php, pagination/n07.blade.php, components/ui/*.
+--}}
 @extends('layouts.app')
 
-@section('title', 'Lịch sử đề xuất & quyết định DSS')
-
-@section('breadcrumbs')
-    <span class="sep">/</span>
-    <a href="{{ route('dss.index') }}">Đề xuất nhập hàng</a>
-    <span class="sep">/</span>
-    <span class="current">Lịch sử quyết định</span>
-@endsection
+@section('title', 'Lịch sử quyết định DSS')
+@section('page-title', 'Lịch sử DSS')
+@section('page-subtitle', 'Toàn bộ vết tính toán, căn cứ nhu cầu và quyết định phê duyệt nhập hàng.')
 
 @section('content')
-<div class="page-heading">
-    <div>
-        <h2>Lịch sử tính toán đề xuất & Quyết định nhập hàng</h2>
-        <p>Theo dõi toàn bộ vết tính toán, căn cứ nhu cầu và các quyết định phê duyệt / đặt hàng qua các đợt.</p>
-    </div>
-    <div class="page-actions">
-        <a class="btn btn-secondary" href="{{ route('dss.index') }}">← Quay lại đề xuất</a>
-        @if(auth()->user()->role === 'admin')
-            <a class="btn btn-secondary" href="{{ route('audit.index') }}">
-                <svg class="ui-icon"><use href="#icon-audit"/></svg> Nhật ký kiểm toán
-            </a>
-        @endif
-    </div>
-</div>
+<div class="space-y-6">
 
-<div class="card" style="padding:0;overflow:hidden">
-    <div class="table-wrap" style="border:none">
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:80px">Mã / Ngày</th>
-                    <th>Sản phẩm / SKU</th>
-                    <th class="text-center">Trạng thái xử lý</th>
-                    <th class="text-right">Đề xuất (Q)</th>
-                    <th class="text-right">Admin duyệt</th>
-                    <th class="text-right">Đặt thực tế</th>
-                    <th class="text-right">Đã nhận kho</th>
-                    <th>Người duyệt & Ghi chú</th>
-                    <th class="text-center">Chi tiết căn cứ</th>
-                </tr>
-            </thead>
-            <tbody>
+    {{-- KHUNG 1: HEADER --}}
+    <x-ui.page-header title="Lịch sử tính toán & quyết định DSS"
+                      chip="Nhật ký quyết định bổ sung kho"
+                      subtitle="Theo dõi toàn bộ lịch sử chạy thuật toán DSS, căn cứ nhu cầu ROP/SS và các quyết định duyệt/đặt hàng.">
+        <x-slot:actions>
+            <a href="{{ route('dss.index') }}"
+               class="h-10 px-4 rounded-xl bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors font-label-lg text-xs font-semibold inline-flex items-center gap-2 border border-surface-container-high/70 shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                <span>Quay lại đề xuất DSS</span>
+            </a>
+            @if(auth()->user()->role === 'admin')
+                <a href="{{ route('audit.index') }}"
+                   class="h-10 px-4 rounded-xl bg-primary text-white hover:bg-neutral-800 transition-colors font-label-lg text-xs font-semibold inline-flex items-center gap-2 shadow-sm">
+                    <span class="material-symbols-outlined text-[18px] text-white">security</span>
+                    <span class="text-white">Nhật ký kiểm toán</span>
+                </a>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
+
+    {{-- KHUNG 2: KHÔNG GIAN DỮ LIỆU TỔNG THỂ --}}
+    <x-ui.section-card spacing="space-y-6">
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                    <h3 class="text-sm font-bold text-on-surface uppercase tracking-wider font-mono">Danh sách bản ghi quyết định</h3>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-surface-container-low text-on-surface-variant border border-surface-container-high">
+                        {{ $records->total() }} bản ghi
+                    </span>
+                </div>
+            </div>
+
+            <x-ui.data-table minWidth="min-w-[1100px]">
+                <x-slot:head>
+                    <th class="py-3.5 pl-6 pr-2 min-w-[100px]">Mã / Ngày</th>
+                    <th class="py-3.5 px-5 min-w-[220px]">Sản phẩm & SKU</th>
+                    <th class="py-3.5 px-5 text-center min-w-[140px]">Trạng thái</th>
+                    <th class="py-3.5 px-5 text-right min-w-[110px]">Đề xuất (Q)</th>
+                    <th class="py-3.5 px-5 text-right min-w-[110px]">Admin duyệt</th>
+                    <th class="py-3.5 px-5 text-right min-w-[110px]">Đặt thực tế</th>
+                    <th class="py-3.5 px-5 text-right min-w-[110px]">Đã nhận kho</th>
+                    <th class="py-3.5 px-5 min-w-[180px]">Người duyệt & Ghi chú</th>
+                    <th class="py-3.5 pr-6 pl-2 text-center min-w-[120px]">Căn cứ</th>
+                </x-slot:head>
+
                 @forelse($records as $rec)
                     @php
                         $st = $rec->status;
-                        $badgeClass = match($st) {
-                            'pending' => 'badge-warning',
-                            'approved' => 'badge-info',
-                            'ordered', 'partially_received' => 'badge-primary',
-                            'fulfilled' => 'badge-success',
-                            'rejected', 'cancelled' => 'badge-danger',
-                            default => 'badge-muted'
-                        };
-                        $badgeText = match($st) {
-                            'pending' => 'Chờ duyệt',
-                            'approved' => 'Đã duyệt (Chờ đặt)',
-                            'ordered' => 'Đã đặt NCC (Đang về)',
-                            'partially_received' => 'Đã nhận một phần',
-                            'fulfilled' => 'Đã nhận đủ',
-                            'rejected' => 'Từ chối',
-                            'cancelled' => 'Đã hủy',
-                            default => $st
-                        };
+                        $badgeMap = [
+                            'pending' => ['warning', 'Chờ duyệt'],
+                            'approved' => ['info', 'Đã duyệt (Chờ đặt)'],
+                            'ordered' => ['info', 'Đã đặt NCC (Đang về)'],
+                            'partially_received' => ['warning', 'Đã nhận 1 phần'],
+                            'fulfilled' => ['success', 'Đã nhận đủ'],
+                            'rejected' => ['danger', 'Từ chối'],
+                            'cancelled' => ['danger', 'Đã hủy'],
+                        ];
+                        $statusBadge = $badgeMap[$st] ?? ['neutral', $st];
                     @endphp
-                    <tr>
-                        <td>
-                            <strong style="color:var(--text-main)">#{{ $rec->id }}</strong>
-                            <div class="product-meta">{{ \Illuminate\Support\Carbon::parse($rec->created_at)->format('d/m/Y H:i') }}</div>
+                    <tr class="hover:bg-surface-container-low/70 transition-colors h-[72px]">
+                        <td class="py-4 pl-6 pr-2">
+                            <span class="font-mono font-bold text-xs text-on-surface">#{{ $rec->id }}</span>
+                            <span class="text-[11px] text-on-surface-variant block">{{ \Illuminate\Support\Carbon::parse($rec->created_at)->format('d/m/Y H:i') }}</span>
                         </td>
-                        <td>
-                            <a href="{{ route('products.show', $rec->product_id) }}" class="product-title" style="color:var(--primary)">
+
+                        <td class="py-4 px-5">
+                            <a href="{{ route('products.show', $rec->product_id) }}" class="font-bold text-sm text-on-surface hover:underline block">
                                 {{ $rec->name }}
                             </a>
-                            <span class="product-meta">SKU: {{ $rec->product_code }} ({{ $rec->unit ?? '' }})</span>
+                            <span class="font-mono text-xs text-on-surface-variant">SKU: {{ $rec->product_code }} · {{ $rec->unit ?? '' }}</span>
                         </td>
-                        <td class="text-center">
-                            <span class="badge {{ $badgeClass }}">{{ $badgeText }}</span>
+
+                        <td class="py-4 px-5 text-center whitespace-nowrap">
+                            <x-ui.status-pill :variant="$statusBadge[0]" :label="$statusBadge[1]" />
                         </td>
-                        <td class="text-right font-mono">
-                            <strong>{{ number_format($rec->suggested_quantity) }}</strong>
+
+                        <td class="py-4 px-5 text-right font-mono font-bold text-sm text-on-surface">
+                            {{ number_format($rec->suggested_quantity) }}
                         </td>
-                        <td class="text-right font-mono" style="color:var(--primary)">
+
+                        <td class="py-4 px-5 text-right font-mono font-bold text-sm text-secondary">
                             {{ $rec->approved_quantity !== null ? number_format($rec->approved_quantity) : '—' }}
                         </td>
-                        <td class="text-right font-mono">
+
+                        <td class="py-4 px-5 text-right font-mono text-sm text-on-surface-variant">
                             {{ $rec->ordered_quantity !== null ? number_format($rec->ordered_quantity) : '—' }}
                         </td>
-                        <td class="text-right font-mono" style="color:var(--success)">
-                            <strong>{{ number_format($rec->received_quantity ?? 0) }}</strong>
+
+                        <td class="py-4 px-5 text-right font-mono font-bold text-sm text-emerald-700">
+                            {{ number_format($rec->received_quantity ?? 0) }}
                         </td>
-                        <td>
-                            <div>
-                                <strong>{{ $rec->reviewer ?? 'Tự động' }}</strong>
-                                @if($rec->reviewed_at)
-                                    <small class="text-muted">({{ \Illuminate\Support\Carbon::parse($rec->reviewed_at)->format('d/m H:i') }})</small>
-                                @endif
-                            </div>
-                            @if($rec->decision_note)
-                                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">{{ $rec->decision_note }}</div>
-                            @endif
+
+                        <td class="py-4 px-5 text-xs text-on-surface-variant">
+                            <span class="font-bold text-on-surface block">{{ $rec->reviewer ?? 'Tự động' }}</span>
+                            <span>{{ $rec->decision_note ?: ($rec->order_note ?: '—') }}</span>
                         </td>
-                        <td class="text-center">
-                            <details style="display:inline-block;text-align:left">
-                                <summary style="cursor:pointer;color:var(--primary);font-weight:600;font-size:11.5px">
-                                    🔍 Xem căn cứ
+
+                        <td class="py-4 pr-6 pl-2 text-center">
+                            <details class="inline-block text-left">
+                                <summary class="px-2.5 py-1 rounded-lg bg-surface-container-low text-xs font-semibold text-on-surface hover:bg-surface-container cursor-pointer select-none">
+                                    Chi tiết
                                 </summary>
-                                <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:grid;place-items:center;padding:20px" onclick="if(event.target===this)this.closest('details').removeAttribute('open')">
-                                    <div class="card" style="width:min(100%, 560px);max-height:85vh;overflow-y:auto;background:#fff;padding:24px" onclick="event.stopPropagation()">
-                                        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border)">
-                                            <h4 style="font-size:15px;color:var(--text-main)">Chi tiết căn cứ đề xuất #{{ $rec->id }}</h4>
-                                            <button type="button" class="btn btn-quiet btn-sm" onclick="this.closest('details').removeAttribute('open')">✕</button>
+                                <div class="fixed inset-0 bg-neutral-900/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)this.closest('details').removeAttribute('open')">
+                                    <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-xl border border-surface-container-high space-y-4" onclick="event.stopPropagation()">
+                                        <div class="flex items-center justify-between pb-3 border-b border-surface-container-high/60">
+                                            <h3 class="font-headline-sm text-sm font-bold text-on-surface">Căn cứ quyết định đề xuất #{{ $rec->id }}</h3>
+                                            <button type="button" onclick="this.closest('details').removeAttribute('open')" class="text-on-surface-variant hover:text-on-surface">✕</button>
                                         </div>
-                                        <div style="margin:16px 0;font-size:12px;line-height:1.6">
-                                            <strong>Giải thích thuật toán:</strong>
-                                            <p style="margin:4px 0 12px;color:var(--text-muted)">{{ $rec->explanation ?: 'Hệ thống tự động đề xuất dựa trên mô hình kiểm soát tồn kho ROP.' }}</p>
-                                            
-                                            <strong>Dữ liệu snapshot kỹ thuật:</strong>
-                                            <pre class="audit-json" style="max-height:240px;overflow-y:auto;background:var(--bg-subtle);padding:10px;border-radius:var(--radius-md);font-size:11px">{{ json_encode(json_decode($rec->calculation_snapshot ?? '{}'), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                        <div class="space-y-3 text-xs">
+                                            <div class="p-3 rounded-xl bg-surface-container-low border border-surface-container-high/60">
+                                                <strong class="text-on-surface block mb-1">Giải thích tính toán:</strong>
+                                                <p class="text-on-surface-variant leading-relaxed">{{ $rec->explanation ?: 'Không có giải thích' }}</p>
+                                            </div>
+                                            <div>
+                                                <strong class="text-on-surface block mb-1">Dữ liệu đầu vào (Snapshot):</strong>
+                                                <pre class="p-3 rounded-xl bg-neutral-900 text-emerald-400 font-mono text-[11px] overflow-x-auto">{{ json_encode(json_decode($rec->calculation_snapshot ?? '{}'), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -126,21 +138,19 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="empty-state">
-                            <span class="empty-icon">📜</span>
-                            <div class="empty-title">Chưa có lịch sử đề xuất nào</div>
-                            <p class="empty-desc">Các đề xuất sau khi tính toán và duyệt sẽ xuất hiện tại đây.</p>
+                        <td colspan="9" class="p-0 border-0">
+                            <x-ui.empty-state icon="manage_history"
+                                              title="Chưa có lịch sử đề xuất DSS"
+                                              message="Khi thuật toán DSS được chạy và ghi nhận quyết định, lịch sử sẽ xuất hiện tại đây." />
                         </td>
                     </tr>
                 @endforelse
-            </tbody>
-        </table>
-    </div>
+            </x-ui.data-table>
 
-    @if($records->hasPages())
-        <div style="padding:12px 16px;border-top:1px solid var(--border-light)">
-            {{ $records->links('pagination.n07') }}
+            <div class="pt-2">
+                {{ $records->links('pagination.n07') }}
+            </div>
         </div>
-    @endif
+    </x-ui.section-card>
 </div>
 @endsection
