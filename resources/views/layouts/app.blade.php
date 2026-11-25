@@ -1,17 +1,84 @@
+{{-- File: resources/views/layouts/app.blade.php --}}
+{{-- Mô tả: Layout khung chính hệ thống N07 Inventory (Sidebar cố định w-64 chia 3 phần độc lập, Top Header thống nhất chiều cao 80px/5rem liền mạch với Sidebar Logo, Dropdown thông báo & ô tìm kiếm chống đè icon, Wrapper main cách header chuẩn 24px, tích hợp Tailwind v4 Design System). --}}
 <!DOCTYPE html>
 <html lang="vi">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Quản lý kho & Hỗ trợ nhập hàng') | N07 DSS</title>
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <title>@yield('title', 'N07 Inventory') | N07 Inventory</title>
+
+    {{-- Tự host Font chữ và Icon nội bộ - Tuyệt đối không gọi CDN nước ngoài chặn render --}}
+    <link rel="preload" href="{{ asset('fonts/plus-jakarta-sans-2.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/material-symbols-outlined.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ asset('fonts/fonts.css') }}">
+
+    {{-- CSS tĩnh biên dịch sẵn (Tailwind v4) --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- Khai báo biến CSS duy nhất --topbar-h: 5rem (80px) để đồng bộ tuyệt đối chiều cao khung Logo và Header --}}
+    <style>
+        :root {
+            --topbar-h: 5rem; /* 80px (h-20) thống nhất giữa Sidebar Logo và Header */
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        /* Thanh cuộn mảnh 6px màu #D1D5DB cho vùng Menu cuộn */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+            display: block !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #D1D5DB;
+            border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #9CA3AF;
+        }
+        .sidebar-toggle {
+            display: none;
+        }
+        @media (max-width: 1023px) {
+            .sidebar-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0.5rem;
+                border-radius: 0.75rem;
+                color: #45464c;
+            }
+            .sidebar-toggle:hover {
+                background-color: #f3f4f6;
+            }
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #F1F3F5;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Bỏ hoàn toàn mũi tên select mặc định của trình duyệt/forms plugin */
+        select {
+            background-image: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+        }
+    </style>
     @stack('styles')
 </head>
 
-<body>
-<svg class="icon-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<body class="bg-[#F1F3F5] font-body-md text-on-surface antialiased">
+
+{{-- Thư viện biểu tượng SVG để tương thích với các view báo cáo & trang con --}}
+<svg class="icon-library" style="display:none;" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
     <symbol id="icon-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></symbol>
     <symbol id="icon-product" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12v9"/></symbol>
     <symbol id="icon-category" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
@@ -31,220 +98,380 @@
     <symbol id="icon-audit" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></symbol>
 </svg>
 
-<div class="app-shell">
-    <aside class="sidebar" id="app-sidebar" aria-label="Điều hướng hệ thống">
-        <a class="brand" href="{{ route('dashboard') }}" title="N07 Inventory System">
-            <span class="brand-mark">N7</span>
-            <span class="brand-copy">
-                <span class="brand-name">N07 WAREHOUSE</span>
-                <span class="brand-caption">REPLENISHMENT DSS</span>
-            </span>
+{{-- Backdrop che mờ khi mở Sidebar trên Mobile --}}
+<div id="sidebar-backdrop" onclick="toggleMenu()" class="fixed inset-0 bg-neutral-900/40 z-40 hidden lg:hidden transition-opacity duration-300"></div>
+
+{{-- ========================================================================= --}}
+{{-- SIDEBAR CỐ ĐỊNH W-64: Gồm 3 phần tách bạch theo đúng yêu cầu               --}}
+{{-- ========================================================================= --}}
+<aside id="app-sidebar" class="fixed left-0 top-0 h-screen w-64 flex flex-col bg-white z-50 shadow-[0_1px_8px_rgba(0,0,0,0.04)] select-none -translate-x-full lg:translate-x-0 transition-transform duration-300">
+    {{-- Phần a: Khung Logo chiều cao chuẩn h-[var(--topbar-h)] (80px), căn giữa dọc items-center --}}
+    <div class="shrink-0 h-[var(--topbar-h)] px-4 flex items-center justify-between border-b border-surface-container-high/60 bg-white">
+        <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#1A4D38] flex items-center justify-center text-white font-bold text-base shadow-sm shrink-0">
+                N7
+            </div>
+            <div class="flex flex-col text-left">
+                <span class="font-headline-sm text-[16px] text-on-surface tracking-tight leading-tight font-bold">N07 Inventory</span>
+                <span class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold leading-tight mt-0.5">Kho vận thông minh</span>
+            </div>
         </a>
+        <button type="button" class="lg:hidden p-1.5 text-on-surface-variant hover:text-on-surface" onclick="toggleMenu()">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+    </div>
 
-        <nav class="sidebar-nav" aria-label="Điều hướng chính">
-            <!-- 1. Tổng quan -->
-            <div class="nav-group">
-                <div class="nav-label">Tổng quan</div>
-                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                    <svg class="nav-icon"><use href="#icon-dashboard"/></svg>
-                    <span class="nav-text">Tổng quan kho</span>
-                </a>
-            </div>
+    {{-- Phần b: Menu cuộn độc lập --}}
+    <nav class="flex-1 min-h-0 overflow-y-auto px-2 pt-4 pb-4 space-y-4 custom-scrollbar">
+        {{-- Nhóm 1: Tổng quan --}}
+        <div class="space-y-1">
+            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Tổng quan</div>
+            <a href="{{ route('dashboard') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('dashboard') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">grid_view</span>
+                <span>Dashboard</span>
+            </a>
+        </div>
 
-            <!-- 2. Quản lý hàng hóa -->
-            <div class="nav-group">
-                <div class="nav-label">Quản lý hàng hóa</div>
-                <a class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}" href="{{ route('products.index') }}">
-                    <svg class="nav-icon"><use href="#icon-product"/></svg>
-                    <span class="nav-text">Danh sách sản phẩm</span>
-                </a>
-                @if(auth()->user()->role === 'admin')
-                    <a class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}" href="{{ route('categories.index') }}">
-                        <svg class="nav-icon"><use href="#icon-category"/></svg>
-                        <span class="nav-text">Danh mục hàng hóa</span>
-                    </a>
-                @endif
-            </div>
-
-            <!-- 3. Nghiệp vụ kho -->
-            <div class="nav-group">
-                <div class="nav-label">Nghiệp vụ kho</div>
-                <a class="nav-link {{ request()->routeIs('inventory.create') && request()->route('type') === 'import' ? 'active' : '' }}" href="{{ route('inventory.create', 'import') }}">
-                    <svg class="nav-icon"><use href="#icon-import"/></svg>
-                    <span class="nav-text">Phiếu nhập kho</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('inventory.create') && request()->route('type') === 'export' ? 'active' : '' }}" href="{{ route('inventory.create', 'export') }}">
-                    <svg class="nav-icon"><use href="#icon-export"/></svg>
-                    <span class="nav-text">Phiếu xuất kho</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('inventory.index') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
-                    <svg class="nav-icon"><use href="#icon-stock"/></svg>
-                    <span class="nav-text">Tra cứu tồn kho</span>
-                </a>
-            </div>
-
-            <!-- 4. Hỗ trợ nhập hàng (DSS) -->
-            <div class="nav-group">
-                <div class="nav-label">Hỗ trợ nhập hàng</div>
-                <a class="nav-link {{ request()->routeIs('dss.index') ? 'active' : '' }}" href="{{ route('dss.index') }}">
-                    <svg class="nav-icon"><use href="#icon-reorder"/></svg>
-                    <span class="nav-text">Đề xuất bổ sung hàng</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('dss.history') ? 'active' : '' }}" href="{{ route('dss.history') }}">
-                    <svg class="nav-icon"><use href="#icon-history"/></svg>
-                    <span class="nav-text">Lịch sử đặt & nhận hàng</span>
-                </a>
-            </div>
-
-            <!-- 5. Báo cáo & Phân tích -->
-            <div class="nav-group">
-                <div class="nav-label">Báo cáo & Phân tích</div>
-                <a class="nav-link {{ request()->routeIs('reports.index') ? 'active' : '' }}" href="{{ route('reports.index') }}">
-                    <svg class="nav-icon"><use href="#icon-report"/></svg>
-                    <span class="nav-text">Trung tâm báo cáo</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('reports.bc05') ? 'active' : '' }}" href="{{ route('reports.bc05') }}">
-                    <svg class="nav-icon"><use href="#icon-chart"/></svg>
-                    <span class="nav-text">Dự báo nhu cầu</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('reports.bc04') ? 'active' : '' }}" href="{{ route('reports.bc04') }}">
-                    <svg class="nav-icon"><use href="#icon-alert"/></svg>
-                    <span class="nav-text">Rủi ro tồn & chậm luân chuyển</span>
-                </a>
-                <a class="nav-link {{ request()->routeIs('reports.olap') ? 'active' : '' }}" href="{{ route('reports.olap') }}">
-                    <svg class="nav-icon"><use href="#icon-chart"/></svg>
-                    <span class="nav-text">Phân tích kho đa chiều</span>
-                </a>
-            </div>
-
-            <!-- 6. Quản trị hệ thống (Admin) -->
+        {{-- Nhóm 2: Quản lý hàng hóa --}}
+        <div class="space-y-1">
+            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Quản lý hàng hóa</div>
+            <a href="{{ route('products.index') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('products.*') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                <span>Danh sách sản phẩm</span>
+            </a>
             @if(auth()->user()->role === 'admin')
-                <div class="nav-group">
-                    <div class="nav-label">Quản trị hệ thống</div>
-                    <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">
-                        <svg class="nav-icon"><use href="#icon-users"/></svg>
-                        <span class="nav-text">Quản lý người dùng</span>
-                    </a>
-                    <a class="nav-link {{ request()->routeIs('audit.*') ? 'active' : '' }}" href="{{ route('audit.index') }}">
-                        <svg class="nav-icon"><use href="#icon-audit"/></svg>
-                        <span class="nav-text">Nhật ký hoạt động</span>
-                    </a>
-                </div>
+                <a href="{{ route('categories.index') }}"
+                   class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('categories.*') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                    <span class="material-symbols-outlined text-[20px]">category</span>
+                    <span>Danh mục hàng hóa</span>
+                </a>
             @endif
-        </nav>
+        </div>
 
-        <div class="sidebar-foot">
-            <div class="user-chip">
-                <span class="avatar">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
-                <div class="user-chip-copy">
-                    <span class="user-name">{{ auth()->user()->name }}</span>
-                    <span class="user-role">{{ auth()->user()->role === 'admin' ? 'Quản trị viên (Admin)' : 'Nhân viên kho (Staff)' }}</span>
+        {{-- Nhóm 3: Quản lý kho --}}
+        <div class="space-y-1">
+            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Quản lý kho</div>
+            <a href="{{ route('inventory.create', 'import') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('inventory.create') && request()->route('type') === 'import' ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">move_to_inbox</span>
+                <span>Nhập kho</span>
+            </a>
+            <a href="{{ route('inventory.create', 'export') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('inventory.create') && request()->route('type') === 'export' ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">unarchive</span>
+                <span>Xuất kho</span>
+            </a>
+            <a href="{{ route('inventory.index') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('inventory.index') && request('stock') !== 'attention' ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">warehouse</span>
+                <span>Tra cứu tồn kho & Sổ kho</span>
+            </a>
+        </div>
+
+        {{-- Nhóm 4: Ra quyết định DSS --}}
+        <div class="space-y-1">
+            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Hệ thống DSS</div>
+            <a href="{{ route('dss.index') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('dss.index') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px] text-secondary">assignment_turned_in</span>
+                <span class="font-semibold text-secondary">Đề xuất bổ sung (DSS)</span>
+            </a>
+            <a href="{{ route('dss.history') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('dss.history') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">manage_history</span>
+                <span>Lịch sử quyết định DSS</span>
+            </a>
+            <a href="{{ route('reports.bc05') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('reports.bc05') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">trending_up</span>
+                <span>Nhu cầu & Dự báo</span>
+            </a>
+        </div>
+
+        {{-- Nhóm 5: Phân tích & Báo cáo --}}
+        <div class="space-y-1">
+            <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Báo cáo & Cảnh báo</div>
+            <a href="{{ route('reports.index') }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('reports.*') && !request()->routeIs('reports.bc05') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">analytics</span>
+                <span>Trung tâm Báo cáo (7 BC)</span>
+            </a>
+            <a href="{{ route('inventory.index', ['stock' => 'attention']) }}"
+               class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('inventory.index') && request('stock') === 'attention' ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                <span class="material-symbols-outlined text-[20px]">warning</span>
+                <span>Cảnh báo tồn kho</span>
+            </a>
+        </div>
+
+        {{-- Nhóm 6: Hệ thống (Chỉ Admin) --}}
+        @if(auth()->user()->role === 'admin')
+            <div class="space-y-1">
+                <div class="px-3 py-1 font-label-sm text-[11px] text-on-surface-variant tracking-wider uppercase font-semibold">Hệ thống</div>
+                <a href="{{ route('users.index') }}"
+                   class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('users.*') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                    <span class="material-symbols-outlined text-[20px]">manage_accounts</span>
+                    <span>Quản lý tài khoản</span>
+                </a>
+                <a href="{{ route('audit.index') }}"
+                   class="flex items-center gap-3 px-3 py-2 transition-colors {{ request()->routeIs('audit.*') ? 'bg-surface-container-low text-on-surface font-label-lg font-bold rounded-xl' : 'rounded-xl text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-body-md text-body-md' }}">
+                    <span class="material-symbols-outlined text-[20px]">security</span>
+                    <span>Nhật ký kiểm toán</span>
+                </a>
+            </div>
+        @endif
+    </nav>
+
+    {{-- Phần c: Thẻ User ở đáy --}}
+    <div class="shrink-0 p-3 border-t border-surface-container-high/60 bg-white">
+        <details class="group relative">
+            <summary class="list-none cursor-pointer flex items-center gap-3 p-2 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors">
+                <div class="w-9 h-9 rounded-full bg-[#1A4D38] flex items-center justify-center shrink-0 text-white font-bold text-xs">
+                    {{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}
+                </div>
+                <div class="flex flex-col min-w-0 flex-1 text-left">
+                    <span class="font-label-lg text-label-lg text-on-surface truncate font-semibold">{{ auth()->user()->name }}</span>
+                    <span class="font-label-sm text-[11px] text-on-surface-variant truncate">{{ auth()->user()->role === 'admin' ? 'Quản trị viên kho' : 'Thủ kho lưu trữ' }}</span>
+                </div>
+                <span class="material-symbols-outlined text-[20px] text-on-surface-variant group-open:rotate-180 transition-transform">expand_less</span>
+            </summary>
+
+            {{-- Dropdown đăng xuất --}}
+            <div class="absolute bottom-full mb-2 left-0 right-0 bg-surface-container-lowest rounded-xl shadow-lg border border-surface-container-high p-2 z-50">
+                <div class="px-3 py-2 border-b border-surface-container-high/60 text-xs">
+                    <p class="font-bold text-on-surface">{{ auth()->user()->name }}</p>
+                    <p class="text-on-surface-variant truncate">{{ auth()->user()->email }}</p>
+                </div>
+                <form action="{{ route('logout') }}" method="POST" class="mt-1">
+                    @csrf
+                    <button type="submit" class="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-error hover:bg-error-container/20 rounded-lg transition-colors">
+                        <span class="material-symbols-outlined text-[16px]">logout</span>
+                        <span>Đăng xuất</span>
+                    </button>
+                </form>
+            </div>
+        </details>
+    </div>
+</aside>
+
+{{-- ========================================================================= --}}
+{{-- KHUNG NỘI DUNG CHÍNH (Đẩy lề trái pl-64 cho Sidebar)                     --}}
+{{-- ========================================================================= --}}
+<div class="pl-64 flex flex-col min-h-screen min-w-0">
+    {{-- Header trên cùng đồng bộ chiều cao h-[var(--topbar-h)] (80px) --}}
+    <header class="fixed top-0 left-64 right-0 z-40 h-[var(--topbar-h)] bg-surface-container-lowest/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-surface-container-high/60 flex items-center">
+        <div class="w-full h-full px-space-lg flex items-center justify-between gap-4">
+            {{-- Ô tìm kiếm căn giữa dọc tâm header --}}
+            <div class="flex items-center gap-3 flex-1 max-w-lg">
+                <button type="button" class="icon-button sidebar-toggle" onclick="toggleMenu()" title="Mở menu">
+                    <span class="material-symbols-outlined text-[22px]">menu</span>
+                </button>
+                <x-ui.search-input id="topbar-search-input"
+                                   placeholder="Tìm kiếm sản phẩm, số phiếu, mã SKU..."
+                                   class="w-full" />
+            </div>
+
+            {{-- Các nút trạng thái góc phải header --}}
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-medium">
+                    <span class="material-symbols-outlined text-[16px] text-emerald-600">schedule</span>
+                    <span id="live-clock">{{ now()->format('H:i:s') }}</span>
+                </div>
+                <a href="{{ route('reports.index') }}" class="w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" title="Trợ giúp & Tài liệu">
+                    <span class="material-symbols-outlined text-[22px]">help_outline</span>
+                </a>
+
+                {{-- Nút chuông thông báo có dropdown tương tác --}}
+                <div class="relative" id="notification-wrapper">
+                    <button type="button" id="notification-btn" aria-expanded="false" onclick="toggleNotificationDropdown()"
+                            class="relative w-10 h-10 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
+                            title="Thông báo" aria-label="Xem thông báo">
+                        <span class="material-symbols-outlined text-[22px]">notifications</span>
+                        <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-error"></span>
+                    </button>
+
+                    {{-- Khung dropdown thông báo --}}
+                    <div id="notification-dropdown"
+                         class="hidden absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl bg-white border border-surface-container-high/60 shadow-[0_12px_36px_-4px_rgba(17,24,39,0.12),0_4px_12px_-2px_rgba(17,24,39,0.04)] z-50 overflow-hidden">
+                        <div class="p-4 border-b border-surface-container-high/60 flex items-center justify-between bg-surface-container-lowest">
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-headline-sm text-sm font-bold text-on-surface">Thông báo hệ thống</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-error-container text-on-error-container">Cảnh báo</span>
+                            </div>
+                            <a href="{{ route('inventory.index', ['stock' => 'attention']) }}" class="text-xs font-semibold text-emerald-700 hover:underline">
+                                Xem tồn kho
+                            </a>
+                        </div>
+
+                        <div class="max-h-96 overflow-y-auto divide-y divide-surface-container-high/40 text-xs">
+                            <a href="{{ route('inventory.index', ['stock' => 'attention']) }}" class="p-3.5 flex items-start gap-3 hover:bg-surface-container-low/50 transition-colors block">
+                                <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 mt-0.5">
+                                    <span class="material-symbols-outlined text-[17px]">warning</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-bold text-on-surface truncate">Cảnh báo tồn kho an toàn</h4>
+                                        <span class="w-2 h-2 rounded-full bg-error shrink-0"></span>
+                                    </div>
+                                    <p class="text-[11px] text-on-surface-variant line-clamp-2 mt-0.5">Mặt hàng chạm hoặc dưới ngưỡng an toàn (ROP) cần bổ sung.</p>
+                                </div>
+                            </a>
+
+                            <a href="{{ route('dss.index') }}" class="p-3.5 flex items-start gap-3 hover:bg-surface-container-low/50 transition-colors block">
+                                <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                                    <span class="material-symbols-outlined text-[17px]">assignment_turned_in</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-bold text-on-surface truncate">Đề xuất bổ sung hàng (DSS)</h4>
+                                        <span class="w-2 h-2 rounded-full bg-error shrink-0"></span>
+                                    </div>
+                                    <p class="text-[11px] text-on-surface-variant line-clamp-2 mt-0.5">Kiểm tra và duyệt các đề xuất đặt hàng mới.</p>
+                                </div>
+                            </a>
+
+                            <a href="{{ route('inventory.index') }}" class="p-3.5 flex items-start gap-3 hover:bg-surface-container-low/50 transition-colors block">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5">
+                                    <span class="material-symbols-outlined text-[17px]">warehouse</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-bold text-on-surface truncate">Tra cứu kho hàng</h4>
+                                    <p class="text-[11px] text-on-surface-variant line-clamp-2 mt-0.5">Theo dõi số lượng hàng thực tế và hàng đang trên đường về.</p>
+                                </div>
+                            </a>
+                        </div>
+
+                        <div class="p-3 border-t border-surface-container-high/60 bg-surface-container-low/40 text-center">
+                            <a href="{{ route('reports.bc01') }}" class="text-xs font-bold text-on-surface hover:text-[#1A4D38] inline-flex items-center gap-1 transition-colors">
+                                <span>Xem báo cáo cảnh báo chi tiết</span>
+                                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- User avatar --}}
+                <div class="flex items-center gap-2">
+                    <span class="sr-only">Hi, {{ auth()->user()->name }}</span>
+                    <div class="w-9 h-9 rounded-full bg-[#1A4D38] flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                        {{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}
+                    </div>
                 </div>
             </div>
         </div>
-    </aside>
+    </header>
 
-    <div class="main-shell">
-        <header class="topbar">
-            <div class="topbar-start">
-                <button class="icon-button sidebar-toggle" type="button" aria-label="Đóng/mở menu" onclick="toggleMenu()">
-                    <svg class="ui-icon"><use href="#icon-menu"/></svg>
-                </button>
-                <span class="visually-hidden">Hi, {{ auth()->user()->name }}</span>
-                <div class="topbar-breadcrumbs">
-                    <a href="{{ route('dashboard') }}">Kho</a>
-                    @yield('breadcrumbs')
-                </div>
+    {{-- Wrapper main dùng pt-[calc(var(--topbar-h)+1.5rem)] (80px header + 24px = 104px) --}}
+    <main class="w-full min-w-0 pt-[calc(var(--topbar-h)+1.5rem)] bg-[#F1F3F5] min-h-screen px-space-lg pb-space-lg flex-1">
+        {{-- Flash Messages dùng x-ui.flash-alert --}}
+        @if(session('success'))
+            <div class="mb-4">
+                <x-ui.flash-alert type="success" :message="session('success')" />
             </div>
-
-            <div class="topbar-actions">
-                <time class="topbar-clock" id="live-clock" datetime="{{ now()->toIso8601String() }}">{{ now()->format('H:i:s') }}</time>
-                <a class="notification-link" href="{{ route('inventory.index', ['stock' => 'attention']) }}" title="Mặt hàng cần chú ý">
-                    <svg class="ui-icon"><use href="#icon-bell"/></svg>
-                </a>
-                <details class="account-menu">
-                    <summary>
-                        <span class="avatar">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
-                        <div class="account-copy">
-                            <span class="user-name">{{ auth()->user()->name }}</span>
-                            <span class="user-role">{{ auth()->user()->role === 'admin' ? 'Admin' : 'Staff' }}</span>
-                        </div>
-                    </summary>
-                    <div class="account-dropdown">
-                        <div class="account-dropdown-user">
-                            <strong>{{ auth()->user()->name }}</strong>
-                            <span>{{ auth()->user()->email }}</span>
-                            <span class="badge badge-info">{{ auth()->user()->role === 'admin' ? 'Quản trị viên' : 'Nhân viên kho' }}</span>
-                        </div>
-                        <form action="{{ route('logout') }}" method="POST">
-                            @csrf
-                            <button type="submit" class="account-logout">Đăng xuất</button>
-                        </form>
-                    </div>
-                </details>
+        @endif
+        @if(session('error'))
+            <div class="mb-4">
+                <x-ui.flash-alert type="error" :message="session('error')" />
             </div>
-        </header>
+        @endif
+        @if(isset($errors) && $errors->any())
+            <div class="mb-4">
+                <x-ui.flash-alert type="error">
+                    <div class="font-semibold mb-1">Vui lòng kiểm tra lại thông tin:</div>
+                    <ul class="list-disc pl-5 space-y-0.5 text-xs">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </x-ui.flash-alert>
+            </div>
+        @endif
 
-        <main class="page-content">
-            @if(session('success'))
-                <div class="alert alert-success" role="status">
-                    <span>✓</span>
-                    <div>{{ session('success') }}</div>
-                </div>
-            @endif
-            @if(session('error'))
-                <div class="alert alert-danger" role="alert">
-                    <span>!</span>
-                    <div>{{ session('error') }}</div>
-                </div>
-            @endif
-            @if($errors->any())
-                <div class="alert alert-danger" role="alert">
-                    <span>!</span>
-                    <ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
-                </div>
-            @endif
-            @yield('content')
-        </main>
-    </div>
+        {{-- Nạp nội dung view con --}}
+        @yield('content')
+    </main>
 </div>
 
+{{-- ========================================================================= --}}
+{{-- JAVASCRIPT HỆ THỐNG                                                       --}}
+{{-- ========================================================================= --}}
 <script>
     function toggleMenu() {
-        if (window.matchMedia('(max-width: 1024px)').matches) {
-            document.body.classList.toggle('nav-open');
-            return;
+        const sidebar = document.getElementById('app-sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (!sidebar) return;
+
+        const isClosed = sidebar.classList.contains('-translate-x-full');
+        if (isClosed) {
+            sidebar.classList.remove('-translate-x-full');
+            backdrop?.classList.remove('hidden');
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            backdrop?.classList.add('hidden');
         }
-        const collapsed = document.body.classList.toggle('sidebar-collapsed');
-        localStorage.setItem('n07-sidebar-collapsed', String(collapsed));
     }
 
-    if (!window.matchMedia('(max-width: 1024px)').matches && localStorage.getItem('n07-sidebar-collapsed') === 'true') {
-        document.body.classList.add('sidebar-collapsed');
+    function toggleNotificationDropdown() {
+        const dropdown = document.getElementById('notification-dropdown');
+        const btn = document.getElementById('notification-btn');
+        if (!dropdown || !btn) return;
+
+        const isHidden = dropdown.classList.contains('hidden');
+        if (isHidden) {
+            dropdown.classList.remove('hidden');
+            btn.setAttribute('aria-expanded', 'true');
+        } else {
+            dropdown.classList.add('hidden');
+            btn.setAttribute('aria-expanded', 'false');
+        }
     }
 
     const liveClock = document.getElementById('live-clock');
     if (liveClock) {
         const updateClock = () => {
-            const now = new Date();
-            liveClock.dateTime = now.toISOString();
+            const currentTime = new Date();
             liveClock.textContent = new Intl.DateTimeFormat('vi-VN', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-            }).format(now);
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+            }).format(currentTime);
         };
         updateClock();
-        setInterval(updateClock, 1000);
+        window.setInterval(updateClock, 1000);
     }
 
-    document.addEventListener('click', function (e) {
-        if (document.body.classList.contains('nav-open') && !e.target.closest('#app-sidebar') && !e.target.closest('.sidebar-toggle')) {
-            document.body.classList.remove('nav-open');
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('details')) {
+            document.querySelectorAll('details[open]').forEach(d => d.removeAttribute('open'));
         }
-        if (!e.target.closest('.account-menu')) {
-            document.querySelector('.account-menu')?.removeAttribute('open');
+        if (!event.target.closest('#notification-wrapper')) {
+            const dropdown = document.getElementById('notification-dropdown');
+            const btn = document.getElementById('notification-btn');
+            if (dropdown && !dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+                btn?.setAttribute('aria-expanded', 'false');
+            }
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            const dropdown = document.getElementById('notification-dropdown');
+            const btn = document.getElementById('notification-btn');
+            if (dropdown && !dropdown.classList.contains('hidden')) {
+                dropdown.classList.add('hidden');
+                btn?.setAttribute('aria-expanded', 'false');
+            }
+            document.querySelectorAll('details[open]').forEach(d => d.removeAttribute('open'));
         }
     });
 </script>
+
+{{-- Nạp Javascript dùng chung và Floating Container --}}
+@include('layouts.partials.scripts')
+
 @stack('scripts')
 </body>
 </html>
