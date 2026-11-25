@@ -1,281 +1,303 @@
+{{--
+    Đường dẫn: resources/views/inventory/index.blade.php
+    Mô tả: Giao diện Tồn kho & Sổ kho giao dịch theo Monochrome Design System, sử dụng các component dùng chung x-ui.*.
+    Phụ thuộc: InventoryController@index, layouts/app.blade.php, pagination/n07.blade.php.
+--}}
 @extends('layouts.app')
 
-@section('title', 'Tra cứu tồn kho')
+@php
+    $productsCount = $productsCount ?? (isset($products) ? $products->total() : 0);
+    $transactionsCount = $transactionsCount ?? (isset($transactions) ? (method_exists($transactions, 'total') ? $transactions->total() : $transactions->count()) : 0);
+    $currentTab = request('tab', 'stock');
+@endphp
 
-@section('breadcrumbs')
-    <span class="sep">/</span>
-    <span class="current">Tồn kho hiện tại</span>
-@endsection
+@section('title', $currentTab === 'history' ? 'Lịch sử nhập xuất kho' : 'Tồn kho hiện tại')
+@section('page-title', 'Quản lý tồn kho')
+@section('page-subtitle', 'Theo dõi lượng hàng, mức an toàn và lịch sử giao dịch kho vận.')
 
 @section('content')
-<div class="page-heading">
-    <div>
-        <h2>Tra cứu tồn kho & vị thế hàng hóa</h2>
-        <p>Theo dõi số lượng tồn thực tế trong kho, hàng đang chờ nhà cung cấp giao và ngưỡng cảnh báo bổ sung.</p>
-    </div>
-    <div class="page-actions">
-        <a href="{{ route('reports.bc01') }}" class="btn btn-secondary">
-            Báo cáo cảnh báo ROP →
-        </a>
-        <a href="{{ route('inventory.create', 'import') }}" class="btn">
-            ＋ Lập phiếu nhập kho
-        </a>
-    </div>
-</div>
+<div class="space-y-6">
 
-<!-- KPI Cards -->
-<div class="kpi-grid">
-    <div class="kpi-card">
-        <div class="kpi-head">
-            <span class="kpi-label">Mặt hàng đang quản lý</span>
-            <span class="kpi-icon info">📦</span>
-        </div>
-        <div class="kpi-val">{{ number_format($metrics->active_product_count) }}</div>
-        <div class="kpi-sub">
-            <span>Đang hoạt động trong kho</span>
-        </div>
-    </div>
+    {{-- KHUNG 1: HEADER DÙNG PARTIAL CHUNG --}}
+    @include('inventory.partials.header', ['productsCount' => $productsCount])
 
-    <div class="kpi-card">
-        <div class="kpi-head">
-            <span class="kpi-label">Ước tính giá trị tồn kho</span>
-            <span class="kpi-icon">💰</span>
-        </div>
-        <div class="kpi-val" style="font-size:20px">{{ number_format($metrics->inventory_value, 0, ',', '.') }} đ</div>
-        <div class="kpi-sub">
-            <span>Tính theo giá nhập vốn gần nhất</span>
-        </div>
-    </div>
+    {{-- KHUNG 2: KHÔNG GIAN DỮ LIỆU TỔNG THỂ DÙNG x-ui.section-card --}}
+    <x-ui.section-card spacing="space-y-6">
 
-    <a href="{{ route('inventory.index', ['stock' => 'attention']) }}" class="kpi-card">
-        <div class="kpi-head">
-            <span class="kpi-label">Cần chú ý / Thiếu hàng</span>
-            <span class="kpi-icon {{ $metrics->low_stock_count > 0 ? 'warning' : 'info' }}">⚠️</span>
-        </div>
-        <div class="kpi-val text-danger">{{ number_format($metrics->low_stock_count) }}</div>
-        <div class="kpi-sub">
-            <span>Dưới ngưỡng an toàn hoặc hết hàng</span>
-        </div>
-    </a>
+        {{-- Thanh chuyển Tab độc lập (Tồn kho / Lịch sử) --}}
+        @include('inventory.partials.tabs', [
+            'currentTab' => $currentTab,
+            'productsCount' => $productsCount,
+            'transactionsCount' => $transactionsCount,
+        ])
 
-    <a href="{{ route('dss.index') }}" class="kpi-card">
-        <div class="kpi-head">
-            <span class="kpi-label">Đề xuất nhập hàng DSS</span>
-            <span class="kpi-icon {{ $metrics->reorder_count > 0 ? 'warning' : 'info' }}">🚚</span>
-        </div>
-        <div class="kpi-val" style="color:var(--primary)">{{ number_format($metrics->reorder_count) }}</div>
-        <div class="kpi-sub">
-            <span>Vị thế tồn kho (IP) ≤ Ngưỡng ROP</span>
-        </div>
-    </a>
-</div>
+        @if($currentTab === 'history')
+            {{-- ===================================================================== --}}
+            {{-- TAB 2: NỘI DUNG LỊCH SỬ NHẬP XUẤT                                     --}}
+            {{-- ===================================================================== --}}
+            <div class="space-y-6">
+                {{-- TOOLBAR TÌM KIẾM & BỘ LỌC --}}
+                <x-ui.toolbar :action="route('inventory.index')"
+                              :resetUrl="route('inventory.index', ['tab' => 'history'])"
+                              :hasFilter="$search || (($filters['stock'] ?? 'all') !== 'all')">
+                    <input type="hidden" name="tab" value="history">
+                    <x-ui.search-input id="historySearchInput"
+                                       name="search"
+                                       :value="$search"
+                                       placeholder="Tìm mã phiếu, người lập, số chứng từ, ghi chú..."
+                                       :autoSubmit="true"
+                                       class="flex-1" />
+                </x-ui.toolbar>
 
-<!-- Banner if suggestions exist -->
-@if($metrics->reorder_count > 0)
-    <div style="background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:var(--radius-md);padding:12px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-size:20px">⚡</span>
-            <div>
-                <strong style="color:var(--warning);font-size:13px">Hệ thống phát hiện {{ number_format($metrics->reorder_count) }} mặt hàng chạm ngưỡng cần nhập (ROP)</strong>
-                <div style="font-size:11.5px;color:#92400e">Xem xét duyệt đề xuất để chuyển thành đơn đặt hàng thực tế với nhà cung cấp.</div>
-            </div>
-        </div>
-        <a href="{{ route('dss.index') }}" class="btn btn-sm btn-warn">
-            Xem danh sách đề xuất →
-        </a>
-    </div>
-@endif
+                {{-- BẢNG DỮ LIỆU LỊCH SỬ GIAO DỊCH --}}
+                <x-ui.data-table minWidth="min-w-[1050px]">
+                    <x-slot:head>
+                        <th class="py-3.5 pl-6 pr-2 min-w-[160px]">Mã phiếu</th>
+                        <th class="py-3.5 px-5 min-w-[140px] text-center">Phân loại</th>
+                        <th class="py-3.5 px-5 min-w-[150px]">Ngày thực hiện</th>
+                        <th class="py-3.5 px-5 min-w-[180px]">Người phụ trách</th>
+                        <th class="py-3.5 px-5 text-right min-w-[160px]">Tổng giá trị</th>
+                        <th class="py-3.5 px-5 min-w-[220px]">Ghi chú</th>
+                        <th class="py-3.5 pr-6 pl-2 text-right w-24 min-w-[96px] whitespace-nowrap">Thao tác</th>
+                    </x-slot:head>
 
-<!-- Search & Filters Toolbar -->
-<form action="{{ route('inventory.index') }}" method="GET" class="filters">
-    <div class="field-search">
-        <input type="search" name="search" value="{{ $search }}"
-               placeholder="⌕  Tìm theo tên mặt hàng hoặc mã SKU..."
-               aria-label="Tìm kiếm">
-    </div>
+                    @forelse($transactions as $transaction)
+                        <tr class="hover:bg-surface-container-low/70 transition-colors h-[72px]">
+                            <x-ui.cell-code :code="$transaction->transaction_code"
+                                            :href="route('inventory.show', $transaction->id)"
+                                            class="pl-6" />
 
-    <select name="category_id" onchange="this.form.submit()">
-        <option value="">Tất cả danh mục</option>
-        @foreach($categories as $category)
-            <option value="{{ $category->id }}" {{ ($filters['category_id'] ?? '') == $category->id ? 'selected' : '' }}>
-                {{ $category->name }}
-            </option>
-        @endforeach
-    </select>
+                            <td class="py-5 px-5 text-center whitespace-nowrap">
+                                <x-ui.status-pill :variant="$transaction->type === 'import' ? 'success' : 'info'"
+                                                  :label="$transaction->type === 'import' ? 'Nhập kho' : 'Xuất kho'" />
+                            </td>
 
-    <select name="stock" onchange="this.form.submit()">
-        <option value="all" {{ ($filters['stock'] ?? 'all') === 'all' ? 'selected' : '' }}>Tất cả tình trạng</option>
-        <option value="attention" {{ ($filters['stock'] ?? '') === 'attention' ? 'selected' : '' }}>⚠️ Cần chú ý (Hết hoặc tồn thấp)</option>
-        <option value="out" {{ ($filters['stock'] ?? '') === 'out' ? 'selected' : '' }}>🚨 Hết hàng (Tồn = 0)</option>
-        <option value="low" {{ ($filters['stock'] ?? '') === 'low' ? 'selected' : '' }}>📉 Tồn thấp (1 – 10)</option>
-        <option value="REORDER" {{ ($filters['stock'] ?? '') === 'REORDER' ? 'selected' : '' }}>🚚 DSS: Cần xem xét nhập (IP ≤ ROP)</option>
-        <option value="NORMAL" {{ ($filters['stock'] ?? '') === 'NORMAL' ? 'selected' : '' }}>✅ DSS: Mức tồn bình thường</option>
-    </select>
+                            <x-ui.cell-date :date="$transaction->transaction_date" />
 
-    <button type="submit" class="btn btn-secondary">Lọc dữ liệu</button>
-    @if($search || !empty($filters['category_id']) || (($filters['stock'] ?? 'all') !== 'all'))
-        <a href="{{ route('inventory.index') }}" class="btn btn-quiet">Xóa bộ lọc</a>
-    @endif
-</form>
-
-<!-- Inventory Data Table -->
-<div class="card" style="padding:0;overflow:hidden;margin-bottom:24px">
-    <div class="table-wrap" style="border:none">
-        <table>
-            <thead>
-                <tr>
-                    <th>Sản phẩm / Mã SKU</th>
-                    <th>Danh mục</th>
-                    <th class="text-right">Tồn thực tế</th>
-                    <th class="text-right">Hàng đang về</th>
-                    <th class="text-right">Vị thế tồn (IP)</th>
-                    <th class="text-right">Ngưỡng ROP</th>
-                    <th class="text-center">Tình trạng tồn</th>
-                    <th class="text-right">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($products as $product)
-                    <tr>
-                        <td>
-                            <div class="product-cell">
-                                <img src="{{ $product->image ? asset('storage/'.$product->image) : asset('images/product-placeholder.svg') }}"
-                                     class="product-thumb" alt="{{ $product->name }}">
-                                <div>
-                                    <a href="{{ route('products.show', $product->id) }}" class="product-title" style="color:var(--primary)">
-                                        {{ $product->name }}
-                                    </a>
-                                    <span class="product-meta">SKU: <strong>{{ $product->product_code }}</strong> ({{ $product->unit }})</span>
+                            <td class="py-5 px-5 text-on-surface font-medium text-[15px] whitespace-nowrap">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-xs font-bold text-on-surface-variant shrink-0 shadow-2xs">
+                                        {{ mb_strtoupper(mb_substr($transaction->staff_name ?? 'U', 0, 1)) }}
+                                    </div>
+                                    <span>{{ $transaction->staff_name ?? 'Admin N07' }}</span>
                                 </div>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="badge badge-muted">{{ $product->category_name }}</span>
-                        </td>
-                        <td class="text-right">
-                            <strong class="{{ $product->on_hand <= 0 ? 'text-danger' : '' }}" style="font-size:13.5px">{{ number_format($product->on_hand) }} {{ $product->unit }}</strong>
-                        </td>
-                        <td class="text-right">
-                            @if(($product->on_order ?? 0) > 0)
-                                <span class="badge badge-warning" title="Hàng nhà cung cấp đang giao">
-                                    +{{ number_format($product->on_order) }} {{ $product->unit }}
-                                </span>
-                            @else
-                                <span class="text-muted">0</span>
-                            @endif
-                        </td>
-                        <td class="text-right">
-                            <strong style="color:var(--text-main)">{{ number_format($product->inventory_position ?? $product->on_hand) }}</strong>
-                        </td>
-                        <td class="text-right">
-                            {{ $product->reorder_point !== null ? number_format($product->reorder_point, 1) : '—' }}
-                        </td>
-                        <td class="text-center">
-                            @if($product->on_hand <= 0)
-                                <span class="badge badge-danger">Hết hàng</span>
-                            @elseif($product->reorder_point !== null && ($product->inventory_position ?? $product->on_hand) <= $product->reorder_point)
-                                <span class="badge badge-warning">Cần nhập (≤ ROP)</span>
-                            @elseif($product->on_hand <= 10)
-                                <span class="badge badge-warning">Tồn thấp</span>
-                            @else
-                                <span class="badge badge-success">Đủ hàng</span>
-                            @endif
-                        </td>
-                        <td class="text-right">
-                            <div style="display:inline-flex;gap:4px">
-                                <a href="{{ route('products.show', $product->id) }}" class="btn btn-sm btn-secondary" title="Xem chi tiết">
-                                    Chi tiết
-                                </a>
-                                <a href="{{ route('inventory.create', ['type' => 'import', 'product_id' => $product->id]) }}" class="btn btn-sm btn-secondary" title="Nhập thêm hàng">
-                                    ＋ Nhập
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" class="empty-state">
-                            <span class="empty-icon">🔍</span>
-                            <div class="empty-title">Không tìm thấy mặt hàng nào</div>
-                            <p class="empty-desc">Thử kiểm tra lại từ khóa tìm kiếm hoặc bỏ bớt các điều kiện lọc.</p>
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+                            </td>
 
-    @if($products->hasPages())
-        <div style="padding:12px 16px;border-top:1px solid var(--border-light)">
-            {{ $products->links('pagination.n07') }}
-        </div>
-    @endif
+                            <x-ui.cell-money :amount="$transaction->total_value" />
+
+                            <td class="py-5 px-5 text-on-surface-variant text-[15px]">
+                                <span class="line-clamp-1 max-w-xs">{{ $transaction->note ?: ($transaction->reference_no ? 'Số CT: ' . $transaction->reference_no : '—') }}</span>
+                            </td>
+
+                            <td class="py-5 pr-6 pl-2 text-right">
+                                <x-ui.row-actions-menu>
+                                    <a href="{{ route('inventory.show', $transaction->id) }}" class="flex items-center gap-2.5 px-3.5 py-2 text-on-surface hover:bg-surface-container-low transition-colors font-medium">
+                                        <span class="material-symbols-outlined text-[17px] text-on-surface-variant">description</span>
+                                        <span>Xem chi tiết phiếu</span>
+                                    </a>
+                                    <button type="button" onclick="window.open('{{ route('inventory.show', $transaction->id) }}', '_blank')" class="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-on-surface hover:bg-surface-container-low transition-colors font-medium">
+                                        <span class="material-symbols-outlined text-[17px] text-on-surface-variant">print</span>
+                                        <span>In phiếu giao dịch</span>
+                                    </button>
+                                </x-ui.row-actions-menu>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="p-0 border-0">
+                                <x-ui.empty-state icon="history"
+                                                  title="Chưa có giao dịch nhập xuất nào"
+                                                  message="Khi lập phiếu nhập kho hoặc xuất kho, lịch sử giao dịch sẽ được tự động lưu trữ tại đây."
+                                                  :actionUrl="route('inventory.index', ['tab' => 'history'])"
+                                                  actionText="Xóa bộ lọc"
+                                                  actionIcon="restart_alt" />
+                            </td>
+                        </tr>
+                    @endforelse
+                </x-ui.data-table>
+            </div>
+        @else
+            {{-- ===================================================================== --}}
+            {{-- TAB 1: NỘI DUNG TỒN KHO HIỆN TẠI                                       --}}
+            {{-- ===================================================================== --}}
+            <div class="space-y-6">
+
+                {{-- A. 4 THẺ CHỈ SỐ KPI TỒN KHO GỌN 140PX ĐƠN SẮC MONOCHROME --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <x-ui.kpi-card label="Sản phẩm đang kinh doanh"
+                                   :value="number_format($metrics->active_product_count ?? 0)"
+                                   unit="mã"
+                                   icon="inventory_2"
+                                   tone="sage"
+                                   pill="Hoạt động"
+                                   status="success">
+                        <span class="truncate">Mặt hàng hoạt động trong kho</span>
+                    </x-ui.kpi-card>
+
+                    <x-ui.kpi-card label="Tổng giá trị tồn kho"
+                                   :value="number_format($metrics->inventory_value ?? 0, 0, ',', '.')"
+                                   unit="đ"
+                                   icon="payments"
+                                   :highlight="true">
+                        <span class="truncate">Ước tính theo giá nhập hiện tại</span>
+                    </x-ui.kpi-card>
+
+                    <x-ui.kpi-card label="Sắp hết / Hết hàng"
+                                   :value="number_format($metrics->low_stock_count ?? 0)"
+                                   unit="mã"
+                                   icon="warning"
+                                   tone="sage"
+                                   :pill="($metrics->low_stock_count ?? 0) > 0 ? 'Cảnh báo' : 'Đầy đủ'"
+                                   :status="($metrics->low_stock_count ?? 0) > 0 ? 'danger' : 'success'">
+                        <span class="truncate">Theo ngưỡng cảnh báo tồn tối thiểu</span>
+                    </x-ui.kpi-card>
+
+                    <x-ui.kpi-card label="Đề xuất cần xem xét"
+                                   :value="number_format($metrics->reorder_count ?? 0)"
+                                   unit="mặt hàng"
+                                   icon="playlist_add_check"
+                                   tone="grey"
+                                   pill="DSS"
+                                   status="warning">
+                        <span class="truncate">Không tự động tạo phiếu nhập</span>
+                    </x-ui.kpi-card>
+                </div>
+
+                {{-- B. BANNER GỢI Ý BỔ SUNG DSS --}}
+                @if(($metrics->reorder_count ?? 0) > 0)
+                    <x-ui.banner-hint icon="tips_and_updates"
+                                      :title="number_format($metrics->reorder_count) . ' mặt hàng có gợi ý bổ sung'"
+                                      message="Kiểm tra lượng tồn và đề xuất tự động trước khi lập phiếu nhập."
+                                      actionText="Xem đề xuất"
+                                      :actionUrl="route('dss.index')" />
+                @endif
+
+                {{-- C. TOOLBAR TÌM KIẾM & BỘ LỌC --}}
+                <x-ui.toolbar :action="route('inventory.index')"
+                              :resetUrl="route('inventory.index')"
+                              :hasFilter="$search || !empty($filters['category_id']) || (($filters['stock'] ?? 'all') !== 'all')">
+                    <x-ui.search-input id="inventorySearchInput"
+                                       name="search"
+                                       :value="$search"
+                                       placeholder="Tìm theo mã SKU, tên mặt hàng (⌘K)..."
+                                       :autoSubmit="true"
+                                       class="flex-1" />
+
+                    <x-ui.filter-select name="category_id" width="w-full sm:w-56">
+                        <option value="">Tất cả danh mục</option>
+                        @foreach($categories as $category)
+                            <option value="{{ $category->id }}" @selected(($filters['category_id'] ?? '') == $category->id)>
+                                {{ $category->name }}
+                            </option>
+                        @endforeach
+                    </x-ui.filter-select>
+
+                    <x-ui.filter-select name="stock" width="w-full sm:w-48">
+                        <option value="all" @selected(($filters['stock'] ?? 'all') === 'all')>Tất cả mức tồn</option>
+                        <option value="attention" @selected(($filters['stock'] ?? '') === 'attention')>⚠️ Cần chú ý (ROP / Hết)</option>
+                        <option value="low" @selected(($filters['stock'] ?? '') === 'low')>Tồn thấp (≤ 10)</option>
+                        <option value="out" @selected(($filters['stock'] ?? '') === 'out')>Hết hàng (= 0)</option>
+                    </x-ui.filter-select>
+                </x-ui.toolbar>
+
+                {{-- D. BẢNG DỮ LIỆU TỒN KHO SẢN PHẨM --}}
+                <x-ui.data-table minWidth="min-w-[1150px]">
+                    <x-slot:head>
+                        <th class="py-3.5 pl-6 pr-2 min-w-[280px]">Mặt hàng</th>
+                        <th class="py-3.5 px-5 min-w-[140px]">Danh mục</th>
+                        <th class="py-3.5 px-5 text-right min-w-[120px]">Tồn thực tế</th>
+                        <th class="py-3.5 px-5 text-right min-w-[120px]">Hàng đang về</th>
+                        <th class="py-3.5 px-5 text-right min-w-[130px]">Vị thế tồn (IP)</th>
+                        <th class="py-3.5 px-5 text-right min-w-[120px]">Điểm ROP</th>
+                        <th class="py-3.5 px-5 text-center min-w-[130px]">Trạng thái</th>
+                        <th class="py-3.5 pr-6 pl-2 text-right w-24 min-w-[96px] whitespace-nowrap">Thao tác</th>
+                    </x-slot:head>
+
+                    @forelse($products as $product)
+                        <tr class="hover:bg-surface-container-low/70 transition-colors h-[72px]">
+                            <td class="py-5 pl-6 pr-2">
+                                <x-ui.product-cell :title="$product->name"
+                                                   :subtitle="'SKU: ' . $product->product_code . ' · ĐVT: ' . $product->unit"
+                                                   :url="route('products.show', $product->id)" />
+                            </td>
+
+                            <td class="py-5 px-5 whitespace-nowrap text-on-surface-variant font-medium text-[15px]">
+                                {{ $product->category_name }}
+                            </td>
+
+                            <td class="py-5 px-5 text-right whitespace-nowrap font-mono font-bold text-[15px] {{ $product->on_hand <= 0 ? 'text-error' : 'text-on-surface' }}">
+                                {{ number_format($product->on_hand) }} <span class="text-xs font-normal text-on-surface-variant font-sans">{{ $product->unit }}</span>
+                            </td>
+
+                            <td class="py-5 px-5 text-right whitespace-nowrap font-mono text-[15px]">
+                                @if(($product->on_order ?? 0) > 0)
+                                    <span class="inline-flex items-center gap-1 text-secondary font-bold" title="Hàng nhà cung cấp đang giao">
+                                        <span class="material-symbols-outlined text-[14px]">local_shipping</span>
+                                        +{{ number_format($product->on_order) }}
+                                    </span>
+                                @else
+                                    <span class="text-on-surface-variant/60 font-medium">0</span>
+                                @endif
+                            </td>
+
+                            <td class="py-5 px-5 text-right whitespace-nowrap font-mono font-bold text-[15px] text-secondary">
+                                {{ number_format($product->inventory_position ?? $product->on_hand) }}
+                            </td>
+
+                            <td class="py-5 px-5 text-right whitespace-nowrap font-mono font-medium text-[15px] text-on-surface">
+                                {{ $product->reorder_point !== null ? number_format($product->reorder_point, 1) : '—' }}
+                            </td>
+
+                            <td class="py-5 px-5 text-center whitespace-nowrap">
+                                @if($product->on_hand <= 0)
+                                    <x-ui.status-pill variant="danger" label="Hết hàng" />
+                                @elseif($product->reorder_point !== null && ($product->inventory_position ?? $product->on_hand) <= $product->reorder_point)
+                                    <x-ui.status-pill variant="amber" label="Cần nhập" />
+                                @elseif($product->on_hand <= 10)
+                                    <x-ui.status-pill variant="warning" label="Tồn thấp" />
+                                @else
+                                    <x-ui.status-pill variant="success" label="Đủ hàng" />
+                                @endif
+                            </td>
+
+                            <td class="py-5 pr-6 pl-2 text-right">
+                                <x-ui.row-actions-menu>
+                                    <a href="{{ route('products.show', $product->id) }}" class="flex items-center gap-2.5 px-3.5 py-2 text-on-surface hover:bg-surface-container-low transition-colors font-medium">
+                                        <span class="material-symbols-outlined text-[17px] text-on-surface-variant">visibility</span>
+                                        <span>Xem chi tiết</span>
+                                    </a>
+                                    <a href="{{ route('inventory.create', ['type' => 'import', 'product_id' => $product->id]) }}" class="flex items-center gap-2.5 px-3.5 py-2 text-on-surface hover:bg-surface-container-low transition-colors font-medium">
+                                        <span class="material-symbols-outlined text-[17px] text-secondary">archive</span>
+                                        <span>Lập phiếu nhập</span>
+                                    </a>
+                                    <a href="{{ route('inventory.create', ['type' => 'export', 'product_id' => $product->id]) }}" class="flex items-center gap-2.5 px-3.5 py-2 text-on-surface hover:bg-surface-container-low transition-colors font-medium">
+                                        <span class="material-symbols-outlined text-[17px] text-primary">unarchive</span>
+                                        <span>Lập phiếu xuất</span>
+                                    </a>
+                                </x-ui.row-actions-menu>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" class="p-0 border-0">
+                                <x-ui.empty-state icon="inventory_2"
+                                                  title="Không tìm thấy sản phẩm tồn kho"
+                                                  message="Không có mặt hàng nào phù hợp với từ khóa hoặc điều kiện lọc hiện tại."
+                                                  :actionUrl="route('inventory.index')"
+                                                  actionText="Xóa bộ lọc"
+                                                  actionIcon="restart_alt" />
+                            </td>
+                        </tr>
+                    @endforelse
+                </x-ui.data-table>
+
+                {{-- Phân trang chuẩn N07 --}}
+                <div class="pt-2">
+                    {{ $products->links('pagination.n07') }}
+                </div>
+            </div>
+        @endif
+
+    </x-ui.section-card>
 </div>
-
-<!-- Recent Transactions Section -->
-<section class="card" id="recent-transactions" style="padding:0;overflow:hidden">
-    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-        <div>
-            <h3 class="card-title">📜 Lịch sử nhập - xuất kho gần đây</h3>
-            <div class="card-subtitle">12 phiếu giao dịch mới nhất được ghi nhận</div>
-        </div>
-        <div class="page-actions">
-            <a href="{{ route('inventory.create', 'import') }}" class="btn btn-sm btn-secondary">＋ Lập phiếu nhập</a>
-            <a href="{{ route('inventory.create', 'export') }}" class="btn btn-sm btn-secondary">− Lập phiếu xuất</a>
-        </div>
-    </div>
-
-    <div class="table-wrap" style="border:none">
-        <table>
-            <thead>
-                <tr>
-                    <th>Mã phiếu</th>
-                    <th>Loại giao dịch</th>
-                    <th>Ngày ghi nhận</th>
-                    <th>Thủ kho thực hiện</th>
-                    <th class="text-right">Tổng giá trị</th>
-                    <th>Ghi chú / Số chứng từ</th>
-                    <th class="text-right">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($transactions as $tx)
-                    <tr>
-                        <td>
-                            <a href="{{ route('inventory.show', $tx->id) }}" class="product-title" style="color:var(--primary)">
-                                {{ $tx->transaction_code }}
-                            </a>
-                        </td>
-                        <td>
-                            @if($tx->type === 'import')
-                                <span class="badge badge-success">📥 Nhập kho</span>
-                            @else
-                                <span class="badge badge-info">📤 Xuất kho</span>
-                            @endif
-                        </td>
-                        <td class="text-muted">{{ \Illuminate\Support\Carbon::parse($tx->transaction_date)->format('d/m/Y') }}</td>
-                        <td>{{ $tx->staff_name ?? 'Hệ thống' }}</td>
-                        <td class="text-right font-mono">
-                            <strong>{{ number_format($tx->total_value, 0, ',', '.') }} đ</strong>
-                        </td>
-                        <td class="text-muted" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                            {{ $tx->note ?: ($tx->reference_no ? 'Số CT: ' . $tx->reference_no : '—') }}
-                        </td>
-                        <td class="text-right">
-                            <a href="{{ route('inventory.show', $tx->id) }}" class="btn btn-sm btn-secondary">
-                                Xem phiếu
-                            </a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="empty-state">
-                            Chưa có giao dịch nhập hoặc xuất nào.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</section>
 @endsection
